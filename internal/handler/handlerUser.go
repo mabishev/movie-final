@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"strings"
 
 	"github.com/marcokz/movie-final/internal/users"
 	"golang.org/x/crypto/bcrypt"
@@ -71,7 +72,7 @@ func (h *UserHandler) SignIn(w http.ResponseWriter, r *http.Request) {
 	}
 
 	//генерация jwt токена
-	tokenString, err := GenerateJWT(u.Email)
+	tokenString, err := GenerateJWT(u.ID, u.Email) // что дальше делать с токеном?
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(w).Encode(map[string]string{"error": "failed to generate token"})
@@ -80,11 +81,10 @@ func (h *UserHandler) SignIn(w http.ResponseWriter, r *http.Request) {
 
 	// Возвращаем JWT токен клиенту
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"token": tokenString})
+	json.NewEncoder(w).Encode(map[string]string{"token": tokenString}) //???
 }
 
 type UpdateUserInfo struct {
-	ID          int32  `json:id`
 	Sex         string `json:sex`
 	DateOfBirth string `json:dateofbirth`
 	Country     string `json:country`
@@ -94,16 +94,35 @@ type UpdateUserInfo struct {
 func (h *UserHandler) UpdateUserInfo(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("Content-Type", "application/json")
 
+	// Получение токена из заголовка Authorization
+	tokenStr := r.Header.Get("Authorization")
+	if tokenStr == "" {
+		w.WriteHeader(http.StatusUnauthorized)
+		json.NewEncoder(w).Encode(map[string]string{"error": "missing token"})
+		return
+	}
+
+	// Удаление префикса "Bearer " из строки токена
+	tokenStr = strings.TrimPrefix(tokenStr, "Bearer ")
+
+	// Проверка токена
+	claims, err := ValidationJWT(tokenStr)
+	if err != nil {
+		w.WriteHeader(http.StatusUnauthorized)
+		json.NewEncoder(w).Encode(map[string]string{"error": "invalid token"})
+		return
+	}
+
 	var update UpdateUserInfo
 
-	err := json.NewDecoder(r.Body).Decode(&update)
+	err = json.NewDecoder(r.Body).Decode(&update)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
 	u := users.User{
-		ID:          update.ID, // pathvalue??
+		ID:          claims.ID,
 		Sex:         update.Sex,
 		DateOfBirth: update.DateOfBirth,
 		Country:     update.Country,

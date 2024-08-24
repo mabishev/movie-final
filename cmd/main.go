@@ -12,7 +12,7 @@ const connString = "postgres://postgres:nolan@127.0.0.1:5432"
 
 func main() {
 	pool, err := postgresdb.Connect(connString)
-	if err != nil {    // github
+	if err != nil {
 		log.Fatal(err)
 		return
 	}

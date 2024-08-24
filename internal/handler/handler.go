@@ -63,7 +63,7 @@ func (h *MovieHandler) GetMoviesByID(w http.ResponseWriter, r *http.Request) {
 	}
 
 	m, err := h.moviesRepo.GetMoviesByID(r.Context(), id)
-	if errors.Is(err, movie.ErrNotFound) {
+	if errors.Is(err, movie.ErrNotFound) { //???
 		w.WriteHeader(http.StatusNotFound)
 		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
 		return

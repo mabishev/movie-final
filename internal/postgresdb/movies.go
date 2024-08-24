@@ -52,7 +52,7 @@ func (p *PgxMovieRepository) GetMoviesByID(ctx context.Context, id int64) (movie
 
 	var m movie.Movie
 	err := row.Scan(&m.ID, &m.Name, &m.Year)
-	if errors.Is(err, pgx.ErrNoRows) {
+	if errors.Is(err, pgx.ErrNoRows) { //???
 		return movie.Movie{}, movie.ErrNotFound
 	}
 	if err != nil {
@@ -63,9 +63,15 @@ func (p *PgxMovieRepository) GetMoviesByID(ctx context.Context, id int64) (movie
 }
 
 func (p *PgxMovieRepository) UpdateMovie(ctx context.Context, m movie.Movie) error {
-	_, err := p.pool.Exec(ctx, "update movie set name = $2, year = $3 where id = $1", m.ID, m.Name, m.Year)
-	return err
-	//при успешной операции постамн выдает 404
+	result, err := p.pool.Exec(ctx, "update movie set name = $2, year = $3 where id = $1", m.ID, m.Name, m.Year)
+	if err != nil {
+		return err
+	}
+
+	if result.RowsAffected() == 0 {
+		return movie.ErrNotFound
+	}
+	return nil
 }
 
 func (p *PgxMovieRepository) DeleteMovieByID(ctx context.Context, id int64) error {
