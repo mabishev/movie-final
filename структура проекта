@@ -1,0 +1,18 @@
+cmd/
+internal/
+    handler/
+        generateJWT.go
+        handler.go
+        handlerUser.go
+        validationJwt.go
+
+    middleware
+        middleware.go
+    movie/
+         movie.go
+    postgresdb/
+         connect.go
+         movies.go
+         user.go
+    users/
+          users.go

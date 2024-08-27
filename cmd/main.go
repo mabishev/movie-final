@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/marcokz/movie-final/internal/handler"
+	"github.com/marcokz/movie-final/internal/middleware"
 	"github.com/marcokz/movie-final/internal/postgresdb"
 )
 
@@ -32,8 +33,9 @@ func main() {
 	mux.HandleFunc("DELETE /movies/{id}", mh.DeleteMovieByID)
 
 	uh := handler.NewUserHandler(userRepo)
-	mux.HandleFunc("POST /users", uh.CreateUser)
-	mux.HandleFunc("POST /auth", uh.SignIn)
+	mux.HandleFunc("POST /user/create", uh.CreateUser)
+	mux.HandleFunc("POST /user/auth", uh.SignIn)
+	mux.Handle("POST /user/update", middleware.JWTAuth(http.HandlerFunc(uh.UpdateUserInfo)))
 
 	server := &http.Server{
 		Addr:    ":8080",

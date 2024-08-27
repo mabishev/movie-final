@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	handler "github.com/marcokz/movie-final/internal/auth"
 	"github.com/marcokz/movie-final/internal/users"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -84,7 +85,7 @@ func (h *UserHandler) SignIn(w http.ResponseWriter, r *http.Request) {
 		Name:     "auth_token",
 		Value:    tokenString,
 		Expires:  time.Now().Add(time.Hour * 24),
-		Path:     "/",
+		Path:     "/user",
 		HttpOnly: true,
 		Secure:   true, // Включайте только если используете HTTPS
 	})
@@ -102,46 +103,54 @@ type UpdateUserInfo struct {
 func (h *UserHandler) UpdateUserInfo(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("Content-Type", "application/json")
 
-	//Cookie version
-	cookie, err := r.Cookie("auth_token")
-	if err != nil {
-		w.WriteHeader(http.StatusUnauthorized)
-		json.NewEncoder(w).Encode(map[string]string{"error": "missing token"})
-	}
+	/*	//Cookie version
+		//Получение токена из куки
+		cookie, err := r.Cookie("auth_token")
+		if err != nil {
+			w.WriteHeader(http.StatusUnauthorized)
+			json.NewEncoder(w).Encode(map[string]string{"error": "missing token"})
+		}
 
-	tokenStr := cookie.Value
+		tokenStr := cookie.Value
 
-	// Проверка токена
-	claims, err := ValidationJWT(tokenStr)
-	if err != nil {
+		// Проверка токена
+		claims, err := ValidationJWT(tokenStr)
+		if err != nil {
+			w.WriteHeader(http.StatusUnauthorized)
+			json.NewEncoder(w).Encode(map[string]string{"error": "invalid token"})
+			return
+		}
+
+		//JWT version
+		// Получение токена из заголовка Authorization
+		tokenStr := r.Header.Get("Authorization")
+		if tokenStr == "" {
+			w.WriteHeader(http.StatusUnauthorized)
+			json.NewEncoder(w).Encode(map[string]string{"error": "missing token"})
+			return
+		}
+
+		// Удаление префикса "Bearer " из строки токена
+		tokenStr = strings.TrimPrefix(tokenStr, "Bearer ")
+
+		// Проверка токена
+		claims, err := ValidationJWT(tokenStr)
+		if err != nil {
+			w.WriteHeader(http.StatusUnauthorized)
+			json.NewEncoder(w).Encode(map[string]string{"error": "invalid token"})
+			return
+	*/
+
+	// Извлечение данных о пользователе из контекста
+	claims, ok := r.Context().Value("user").(*handler.Claims)
+	if !ok {
 		w.WriteHeader(http.StatusUnauthorized)
-		json.NewEncoder(w).Encode(map[string]string{"error": "invalid token"})
 		return
 	}
-
-	//JWT version
-	// Получение токена из заголовка Authorization
-	/*tokenStr := r.Header.Get("Authorization")
-	if tokenStr == "" {
-		w.WriteHeader(http.StatusUnauthorized)
-		json.NewEncoder(w).Encode(map[string]string{"error": "missing token"})
-		return
-	}
-
-	// Удаление префикса "Bearer " из строки токена
-	tokenStr = strings.TrimPrefix(tokenStr, "Bearer ")
-
-	// Проверка токена
-	claims, err := ValidationJWT(tokenStr)
-	if err != nil {
-		w.WriteHeader(http.StatusUnauthorized)
-		json.NewEncoder(w).Encode(map[string]string{"error": "invalid token"})
-		return
-	}*/
 
 	var update UpdateUserInfo
 
-	err = json.NewDecoder(r.Body).Decode(&update)
+	err := json.NewDecoder(r.Body).Decode(&update)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
