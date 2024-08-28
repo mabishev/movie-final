@@ -4,8 +4,14 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/marcokz/movie-final/internal/handler"
+	"github.com/marcokz/movie-final/internal/auth"
 )
+
+// Создаем кастомный тип для ключа контекста. Это уменьшит вероятность
+// коллизий с другими значениями, которые могут быть сохранены в контексте.
+type ContextKey string
+
+const UserContextKey ContextKey = "user"
 
 func JWTAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -17,7 +23,7 @@ func JWTAuth(next http.Handler) http.Handler {
 		}
 
 		// Проверяем JWT токен
-		claims, err := handler.ValidationJWT(cookie.Value)
+		claims, err := auth.ValidationJWT(cookie.Value)
 		if err != nil {
 			w.WriteHeader(http.StatusUnauthorized)
 			w.Write([]byte("Неверный токен"))
@@ -25,7 +31,8 @@ func JWTAuth(next http.Handler) http.Handler {
 		}
 
 		// Сохраняем данные о пользователе в контексте запроса
-		ctx := context.WithValue(r.Context(), "user", claims)
+		ctx := context.WithValue(r.Context(), userContextKey, claims)
+		// Передаем управление следующему обработчику с новым контекстом
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }

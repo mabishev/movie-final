@@ -1,4 +1,4 @@
-package handler
+package auth
 
 import (
 	"time"
@@ -10,7 +10,7 @@ import (
 var jwtKey = []byte("your_secret_key")
 
 type Claims struct { // "claims" = "претензии, требования"
-	ID    int32  `json:id`
+	ID    int32  `json:"id"`
 	Email string `json:"email"`
 	jwt.StandardClaims
 }

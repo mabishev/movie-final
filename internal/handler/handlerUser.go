@@ -6,7 +6,8 @@ import (
 	"net/http"
 	"time"
 
-	handler "github.com/marcokz/movie-final/internal/auth"
+	"github.com/marcokz/movie-final/internal/auth"
+	"github.com/marcokz/movie-final/internal/middleware"
 	"github.com/marcokz/movie-final/internal/users"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -43,8 +44,8 @@ func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 }
 
 type SignInRequest struct {
-	Email    string `json:email`
-	Password string `json:password`
+	Email    string `json:"email"`
+	Password string `json:"password"`
 }
 
 func (h *UserHandler) SignIn(w http.ResponseWriter, r *http.Request) {
@@ -73,7 +74,7 @@ func (h *UserHandler) SignIn(w http.ResponseWriter, r *http.Request) {
 	}
 
 	//генерация jwt токена
-	tokenString, err := GenerateJWT(u.ID, u.Email)
+	tokenString, err := auth.GenerateJWT(u.ID, u.Email)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(w).Encode(map[string]string{"error": "failed to generate token"})
@@ -94,10 +95,10 @@ func (h *UserHandler) SignIn(w http.ResponseWriter, r *http.Request) {
 }
 
 type UpdateUserInfo struct {
-	Sex         string `json:sex`
-	DateOfBirth string `json:dateofbirth`
-	Country     string `json:country`
-	City        string `json:country`
+	Sex         string `json:"sex"`
+	DateOfBirth string `json:"dateofbirth"`
+	Country     string `json:"country"`
+	City        string `json:"city"`
 }
 
 func (h *UserHandler) UpdateUserInfo(w http.ResponseWriter, r *http.Request) {
@@ -142,7 +143,7 @@ func (h *UserHandler) UpdateUserInfo(w http.ResponseWriter, r *http.Request) {
 	*/
 
 	// Извлечение данных о пользователе из контекста
-	claims, ok := r.Context().Value("user").(*handler.Claims)
+	claims, ok := r.Context().Value(middleware.UserContextKey).(*auth.Claims)
 	if !ok {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
