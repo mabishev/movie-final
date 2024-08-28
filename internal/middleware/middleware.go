@@ -31,7 +31,7 @@ func JWTAuth(next http.Handler) http.Handler {
 		}
 
 		// Сохраняем данные о пользователе в контексте запроса
-		ctx := context.WithValue(r.Context(), userContextKey, claims)
+		ctx := context.WithValue(r.Context(), UserContextKey, claims)
 		// Передаем управление следующему обработчику с новым контекстом
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
