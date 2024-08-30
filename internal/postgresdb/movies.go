@@ -67,7 +67,7 @@ func (p *PgxMovieRepository) UpdateMovie(ctx context.Context, m movie.Movie) err
 	if err != nil {
 		return err
 	}
-
+	// если запрос не затронет ни одной строки, то вернет ошибку
 	if result.RowsAffected() == 0 {
 		return movie.ErrNotFound
 	}

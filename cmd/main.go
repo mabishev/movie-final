@@ -25,21 +25,26 @@ func main() {
 
 	mux := http.NewServeMux() // на каждый http запрос запускается отдельная go рутина
 
+	withJson := middleware.WithContentTypeJSON(mux)
+
+	adminOnly := middleware.Authorize("admin")
+	userAndAdmin := middleware.Authorize("admin", "user")
+
 	mh := handler.NewMovieHandler(movieRepo)
-	mux.HandleFunc("POST /movies", mh.CreateMovie)
-	mux.HandleFunc("GET /movies", mh.GetMovies) //  если будет "/" в конце адреса, то обрабатываются все адреса после слэша
-	mux.HandleFunc("GET /movies/{id}", mh.GetMoviesByID)
-	mux.HandleFunc("PUT /movies/{id}", mh.UpdateMovie)
-	mux.HandleFunc("DELETE /movies/{id}", mh.DeleteMovieByID)
+	mux.HandleFunc("POST /movies", adminOnly(mh.CreateMovie))
+	mux.HandleFunc("GET /movies", userAndAdmin(mh.GetMovies)) //  если будет "/" в конце адреса, то обрабатываются все адреса после слэша
+	mux.HandleFunc("GET /movies/{id}", userAndAdmin(mh.GetMoviesByID))
+	mux.HandleFunc("PUT /movies/{id}", adminOnly(mh.DeleteMovieByID))
+	mux.HandleFunc("DELETE /movies/{id}", adminOnly(mh.DeleteMovieByID))
 
 	uh := handler.NewUserHandler(userRepo)
-	mux.HandleFunc("POST /user/create", uh.CreateUser)
-	mux.HandleFunc("POST /user/auth", uh.SignIn)
-	mux.Handle("POST /user/update", middleware.JWTAuth(http.HandlerFunc(uh.UpdateUserInfo)))
+	mux.HandleFunc("POST /user/create", userAndAdmin(uh.CreateUser))
+	mux.HandleFunc("POST /user/auth", userAndAdmin(uh.SignIn))
+	mux.Handle("PUT /user/update", userAndAdmin(uh.UpdateUserInfo))
 
 	server := &http.Server{
 		Addr:    ":8080",
-		Handler: mux,
+		Handler: withJson,
 	}
 
 	server.ListenAndServe()

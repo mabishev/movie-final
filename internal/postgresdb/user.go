@@ -34,7 +34,7 @@ func (p *PgxUserRepo) GetUserByEmail(ctx context.Context, email string) (users.U
 	// Получение юзера из базы данных
 	var u users.User
 	err := p.pool.QueryRow(ctx, "select id, email, password from users where email = $1", email).
-		Scan(&u.ID, &u.Email, &u.Password) //query for login or email??
+		Scan(&u.ID, &u.Email, &u.Password)
 	if err != nil {
 		return u, err
 	}

@@ -4,6 +4,7 @@ internal/
         generateJWT.go
         handler.go
         handlerUser.go
+        handlerRatings.go
         validationJwt.go
 
     middleware
