@@ -6,7 +6,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/marcokz/movie-final/internal/movie"
+	"github.com/marcokz/movie-final/internal/entity"
 )
 
 type PgxMovieRepository struct {
@@ -17,59 +17,61 @@ func NewMoviesRepository(p *pgxpool.Pool) *PgxMovieRepository {
 	return &PgxMovieRepository{pool: p}
 }
 
-func (p *PgxMovieRepository) CreateMovie(ctx context.Context, m movie.Movie) error {
-	_, err := p.pool.Exec(ctx, "insert into movie (name, year) values ($1, $2)", m.Name, m.Year)
+func (p *PgxMovieRepository) CreateMovie(ctx context.Context, e entity.Movie) error {
+	_, err := p.pool.Exec(ctx, "insert into movie (name, year) values ($1, $2)", e.Name, e.Year)
 	if err != nil {
 		return errors.New("the movie already exists")
 	}
 	return err
 }
 
-func (p *PgxMovieRepository) GetMovies(ctx context.Context) []movie.Movie {
+func (p *PgxMovieRepository) GetMovies(ctx context.Context) ([]entity.Movie, error) {
 	rows, err := p.pool.Query(ctx, "select id, name, year from movie")
 	if err != nil {
-		return nil
+		return []entity.Movie{}, err
 	}
-	var movies []movie.Movie
+	defer rows.Close()
+
+	var movies []entity.Movie
 
 	for rows.Next() {
-		var m movie.Movie
+		var m entity.Movie
 		err := rows.Scan(
 			&m.ID,
 			&m.Name,
 			&m.Year,
 		)
 		if err != nil {
-			return nil
+			return nil, err
 		}
 		movies = append(movies, m)
 	}
-	return movies
+	return movies, nil
 }
 
-func (p *PgxMovieRepository) GetMoviesByID(ctx context.Context, id int64) (movie.Movie, error) {
+func (p *PgxMovieRepository) GetMoviesByID(ctx context.Context, id int64) (entity.Movie, error) {
 	row := p.pool.QueryRow(ctx, "select id, name, year from movie where id = $1", id)
 
-	var m movie.Movie
-	err := row.Scan(&m.ID, &m.Name, &m.Year)
+	var e entity.Movie
+	err := row.Scan(&e.ID, &e.Name, &e.Year)
 	if errors.Is(err, pgx.ErrNoRows) { //???
-		return movie.Movie{}, movie.ErrNotFound
+		return entity.Movie{}, entity.ErrNotFound
 	}
 	if err != nil {
-		return movie.Movie{}, err
+		return entity.Movie{}, err
 	}
 
-	return m, nil
+	return e, nil
 }
 
-func (p *PgxMovieRepository) UpdateMovie(ctx context.Context, m movie.Movie) error {
-	result, err := p.pool.Exec(ctx, "update movie set name = $2, year = $3 where id = $1", m.ID, m.Name, m.Year)
+func (p *PgxMovieRepository) UpdateMovie(ctx context.Context, e entity.Movie) error {
+	result, err := p.pool.Exec(ctx, "update movie set name = $2, year = $3 where id = $1", e.ID, e.Name, e.Year)
 	if err != nil {
 		return err
 	}
-	// если запрос не затронет ни одной строки, то вернет ошибку
+	// Возвращаем ErrNotFound, если запись не была найдена и обновлена
 	if result.RowsAffected() == 0 {
-		return movie.ErrNotFound
+		return entity.ErrNotFound
 	}
 	return nil
 }

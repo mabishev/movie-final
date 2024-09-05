@@ -7,14 +7,14 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/marcokz/movie-final/internal/movie"
+	"github.com/marcokz/movie-final/internal/entity"
 )
 
 type MoviesRepo interface {
-	CreateMovie(ctx context.Context, movie movie.Movie) error
-	GetMovies(ctx context.Context) []movie.Movie
-	GetMoviesByID(ctx context.Context, id int64) (movie.Movie, error)
-	UpdateMovie(ctx context.Context, m movie.Movie) error
+	CreateMovie(ctx context.Context, e entity.Movie) error
+	GetMovies(ctx context.Context) ([]entity.Movie, error)
+	GetMoviesByID(ctx context.Context, id int64) (entity.Movie, error)
+	UpdateMovie(ctx context.Context, e entity.Movie) error
 	DeleteMovieByID(ctx context.Context, id int64) error
 }
 
@@ -27,34 +27,39 @@ func NewMovieHandler(m MoviesRepo) *MovieHandler {
 }
 
 func (h *MovieHandler) CreateMovie(w http.ResponseWriter, r *http.Request) {
-	w.Header().Add("Content-Type", "application/json") // для показа в postman json
-	var m movie.Movie
+	var e entity.Movie
 
-	if err := json.NewDecoder(r.Body).Decode(&m); err != nil {
+	if err := json.NewDecoder(r.Body).Decode(&e); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	err := h.moviesRepo.CreateMovie(r.Context(), m)
+	err := h.moviesRepo.CreateMovie(r.Context(), e)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
 		return
 	}
+
+	w.WriteHeader(http.StatusCreated)
 }
 
 func (h *MovieHandler) GetMovies(w http.ResponseWriter, r *http.Request) {
-	w.Header().Add("Content-Type", "application/json") // для показа в postman json
-
-	ms := h.moviesRepo.GetMovies(r.Context())
-
-	if err := json.NewEncoder(w).Encode(ms); err != nil { // отправка данных
+	movies, err := h.moviesRepo.GetMovies(r.Context())
+	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+
+	if err := json.NewEncoder(w).Encode(movies); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 }
 
 func (h *MovieHandler) GetMoviesByID(w http.ResponseWriter, r *http.Request) {
-	w.Header().Add("Content-Type", "application/json") // для показа в postman json
 	pathValue := r.PathValue("id")
 	id, err := strconv.ParseInt(pathValue, 10, 64)
 	if err != nil {
@@ -63,7 +68,7 @@ func (h *MovieHandler) GetMoviesByID(w http.ResponseWriter, r *http.Request) {
 	}
 
 	m, err := h.moviesRepo.GetMoviesByID(r.Context(), id)
-	if errors.Is(err, movie.ErrNotFound) { //???
+	if errors.Is(err, entity.ErrNotFound) { //???
 		w.WriteHeader(http.StatusNotFound)
 		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
 		return
@@ -72,6 +77,8 @@ func (h *MovieHandler) GetMoviesByID(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(err.Error()))
 		return
 	}
+
+	w.WriteHeader(http.StatusOK)
 
 	if err := json.NewEncoder(w).Encode(m); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -84,7 +91,6 @@ type UpdateMovieRequest struct {
 }
 
 func (h *MovieHandler) UpdateMovie(w http.ResponseWriter, r *http.Request) {
-	w.Header().Add("Content-Type", "application/json") // для показа в postman json
 	pathValue := r.PathValue("id")
 	id, err := strconv.ParseInt(pathValue, 10, 64)
 	if err != nil {
@@ -99,14 +105,14 @@ func (h *MovieHandler) UpdateMovie(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	m := movie.Movie{
+	m := entity.Movie{
 		ID:   id,
 		Name: update.Name,
 		Year: update.Year,
 	}
 
 	err = h.moviesRepo.UpdateMovie(r.Context(), m)
-	if errors.Is(err, movie.ErrNotFound) { // ???? разве они совпадут?
+	if errors.Is(err, entity.ErrNotFound) { // ???? разве они совпадут?
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
@@ -116,7 +122,6 @@ func (h *MovieHandler) UpdateMovie(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *MovieHandler) DeleteMovieByID(w http.ResponseWriter, r *http.Request) {
-	w.Header().Add("Content-Type", "application/json") // для показа в postman json
 	pathValue := r.PathValue("id")
 	id, err := strconv.ParseInt(pathValue, 10, 64)
 	if err != nil {
@@ -125,8 +130,9 @@ func (h *MovieHandler) DeleteMovieByID(w http.ResponseWriter, r *http.Request) {
 	}
 
 	err = h.moviesRepo.DeleteMovieByID(r.Context(), id)
-	if errors.Is(err, movie.ErrNotFound) {
+	if errors.Is(err, entity.ErrNotFound) {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
+	w.WriteHeader(http.StatusOK)
 }

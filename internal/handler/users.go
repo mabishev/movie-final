@@ -7,15 +7,17 @@ import (
 	"time"
 
 	"github.com/marcokz/movie-final/internal/auth"
+	"github.com/marcokz/movie-final/internal/entity"
 	"github.com/marcokz/movie-final/internal/middleware"
-	"github.com/marcokz/movie-final/internal/users"
+
 	"golang.org/x/crypto/bcrypt"
 )
 
 type UserRepo interface {
-	CreateUser(ctx context.Context, u users.User) error
-	GetUserByEmail(ctx context.Context, loginOrEmail string) (users.User, error)
-	UpdateUserInfo(ctx context.Context, u users.User) error
+	CreateUser(ctx context.Context, u entity.User) error
+	GetUserByEmail(ctx context.Context, loginOrEmail string) (entity.User, error)
+	GetUsersBySex(ctx context.Context, sex string) ([]entity.User, error)
+	UpdateUserInfo(ctx context.Context, u entity.User) error
 }
 
 type UserHandler struct {
@@ -27,8 +29,7 @@ func NewUserHandler(u UserRepo) *UserHandler {
 }
 
 func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
-	w.Header().Add("Content-Type", "application/json")
-	var u users.User
+	var u entity.User
 
 	if err := json.NewDecoder(r.Body).Decode(&u); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -49,8 +50,6 @@ type SignInRequest struct {
 }
 
 func (h *UserHandler) SignIn(w http.ResponseWriter, r *http.Request) {
-	w.Header().Add("Content-Type", "application/json")
-
 	var request SignInRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
@@ -94,54 +93,50 @@ func (h *UserHandler) SignIn(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
+type UserBySex struct {
+	Sex string `json:"sex"`
+}
+
+func (h *UserHandler) GetUsersBySex(w http.ResponseWriter, r *http.Request) {
+	_, ok := r.Context().Value(middleware.UserContextKey).(*auth.Claims)
+	if !ok {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+	var userBySex UserBySex
+
+	err := json.NewDecoder(r.Body).Decode(&userBySex)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	u := entity.User{
+		Sex: userBySex.Sex,
+	}
+
+	users, err := h.userRepo.GetUsersBySex(r.Context(), u.Sex)
+	if err != nil {
+		//http.Error(w, "Failed to get users", http.StatusInternalServerError)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+
+	if err := json.NewEncoder(w).Encode(users); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+	}
+}
+
 type UpdateUserInfo struct {
-	Sex         string `json:"sex"`
-	DateOfBirth string `json:"dateofbirth"`
-	Country     string `json:"country"`
-	City        string `json:"city"`
+	Sex         string    `json:"sex"`
+	DateOfBirth time.Time `json:"dateofbirth"`
+	Country     string    `json:"country"`
+	City        string    `json:"city"`
 }
 
 func (h *UserHandler) UpdateUserInfo(w http.ResponseWriter, r *http.Request) {
-	w.Header().Add("Content-Type", "application/json")
-
-	/* Cookie version
-	//Получение токена из куки
-	cookie, err := r.Cookie("auth_token")
-	if err != nil {
-		w.WriteHeader(http.StatusUnauthorized)
-		json.NewEncoder(w).Encode(map[string]string{"error": "missing token"})
-	}
-
-	tokenStr := cookie.Value
-
-	// Проверка токена
-	claims, err := ValidationJWT(tokenStr)
-	if err != nil {
-		w.WriteHeader(http.StatusUnauthorized)
-		json.NewEncoder(w).Encode(map[string]string{"error": "invalid token"})
-		return
-	}
-
-	//JWT version
-	// Получение токена из заголовка Authorization
-	tokenStr := r.Header.Get("Authorization")
-	if tokenStr == "" {
-		w.WriteHeader(http.StatusUnauthorized)
-		json.NewEncoder(w).Encode(map[string]string{"error": "missing token"})
-		return
-	}
-
-	// Удаление префикса "Bearer " из строки токена
-	tokenStr = strings.TrimPrefix(tokenStr, "Bearer ")
-
-	// Проверка токена
-	claims, err := ValidationJWT(tokenStr)
-	if err != nil {
-		w.WriteHeader(http.StatusUnauthorized)
-		json.NewEncoder(w).Encode(map[string]string{"error": "invalid token"})
-		return
-	*/
-
 	// Извлечение данных о пользователе из контекста
 	claims, ok := r.Context().Value(middleware.UserContextKey).(*auth.Claims)
 	if !ok {
@@ -157,7 +152,7 @@ func (h *UserHandler) UpdateUserInfo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	u := users.User{
+	u := entity.User{
 		ID:          claims.ID,
 		Sex:         update.Sex,
 		DateOfBirth: update.DateOfBirth,

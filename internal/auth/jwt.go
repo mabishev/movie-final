@@ -11,12 +11,12 @@ import (
 var jwtKey = []byte("your_secret_key")
 
 type Claims struct { // "claims" = "претензии, требования"
-	ID   int32  `json:"id"`
+	ID   int64  `json:"id"`
 	Role string `json:"role"`
 	jwt.StandardClaims
 }
 
-func GenerateJWT(id int32, role string) (string, error) {
+func GenerateJWT(id int64, role string) (string, error) {
 	// Устанавливаем время жизни токена
 	expirationTime := time.Now().Add(time.Hour * 24) // "expiration time" = "срок годности/действия"
 	claims := &Claims{
