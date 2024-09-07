@@ -29,12 +29,22 @@ func NewUserHandler(u UserRepo) *UserHandler {
 	return &UserHandler{userRepo: u}
 }
 
-func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
-	var u entity.User
+type CreateUserUser struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
 
-	if err := json.NewDecoder(r.Body).Decode(&u); err != nil {
+func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
+	var create CreateUserUser
+
+	if err := json.NewDecoder(r.Body).Decode(&create); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
+	}
+
+	u := entity.User{
+		Email:    create.Email,
+		Password: create.Password,
 	}
 
 	err := h.userRepo.CreateUser(context.Background(), u)
@@ -162,6 +172,8 @@ func (h *UserHandler) GetUsersBySex(w http.ResponseWriter, r *http.Request) {
 }
 
 type UpdateUserInfo struct {
+	Name        string    `json:"name"`
+	Surname     string    `json:"surname"`
 	Sex         string    `json:"sex"`
 	DateOfBirth time.Time `json:"dateofbirth"`
 	Country     string    `json:"country"`
@@ -186,6 +198,8 @@ func (h *UserHandler) UpdateUserInfo(w http.ResponseWriter, r *http.Request) {
 
 	u := entity.User{
 		ID:          claims.ID,
+		Name:        update.Name,
+		Surname:     update.Surname,
 		Sex:         update.Sex,
 		DateOfBirth: update.DateOfBirth,
 		Country:     update.Country,

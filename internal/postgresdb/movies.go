@@ -17,8 +17,8 @@ func NewMoviesRepository(p *pgxpool.Pool) *PgxMovieRepository {
 	return &PgxMovieRepository{pool: p}
 }
 
-func (p *PgxMovieRepository) CreateMovie(ctx context.Context, e entity.Movie) error {
-	_, err := p.pool.Exec(ctx, "insert into movie (name, year) values ($1, $2)", e.Name, e.Year)
+func (p *PgxMovieRepository) CreateMovie(ctx context.Context, m entity.Movie) error {
+	_, err := p.pool.Exec(ctx, "insert into movie (name, year) values ($1, $2)", m.Name, m.Year)
 	if err != nil {
 		return errors.New("the movie already exists")
 	}
@@ -64,8 +64,8 @@ func (p *PgxMovieRepository) GetMoviesByID(ctx context.Context, id int64) (entit
 	return e, nil
 }
 
-func (p *PgxMovieRepository) UpdateMovie(ctx context.Context, e entity.Movie) error {
-	result, err := p.pool.Exec(ctx, "update movie set name = $2, year = $3 where id = $1", e.ID, e.Name, e.Year)
+func (p *PgxMovieRepository) UpdateMovie(ctx context.Context, m entity.Movie) error {
+	result, err := p.pool.Exec(ctx, "update movie set name = $2, year = $3 where id = $1", m.ID, m.Name, m.Year)
 	if err != nil {
 		return err
 	}

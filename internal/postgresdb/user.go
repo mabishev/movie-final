@@ -96,8 +96,8 @@ func (p *PgxUserRepo) GetUsersBySex(ctx context.Context, sex string) ([]entity.U
 }
 
 func (p *PgxUserRepo) UpdateUserInfo(ctx context.Context, u entity.User) error {
-	_, err := p.pool.Exec(ctx, "update users set sex = $2, dateofbirth = $3, country = $4, city = $5 where id = $1",
-		u.ID, u.Sex, u.DateOfBirth, u.Country, u.City)
+	_, err := p.pool.Exec(ctx, "update users set name = $2, surname = $3, sex = $4, dateofbirth = $5, country = $6, city = $7 where id = $1",
+		u.ID, u.Name, u.Surname, u.Sex, u.DateOfBirth, u.Country, u.City)
 	return err
 
 }

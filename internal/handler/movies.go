@@ -26,15 +26,25 @@ func NewMovieHandler(m MoviesRepo) *MovieHandler {
 	return &MovieHandler{moviesRepo: m}
 }
 
-func (h *MovieHandler) CreateMovie(w http.ResponseWriter, r *http.Request) {
-	var e entity.Movie
+type CreateMovie struct {
+	Name string `json:"name"`
+	Year int    `json:"year"`
+}
 
-	if err := json.NewDecoder(r.Body).Decode(&e); err != nil {
+func (h *MovieHandler) CreateMovie(w http.ResponseWriter, r *http.Request) {
+	var create CreateMovie
+
+	if err := json.NewDecoder(r.Body).Decode(&create); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	err := h.moviesRepo.CreateMovie(r.Context(), e)
+	movie := entity.Movie{
+		Name: create.Name,
+		Year: create.Year,
+	}
+
+	err := h.moviesRepo.CreateMovie(r.Context(), movie)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
