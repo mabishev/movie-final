@@ -15,6 +15,7 @@ import (
 
 type UserRepo interface {
 	CreateUser(ctx context.Context, u entity.User) error
+	GetUsersByAge(ctx context.Context, minAge, maxAge int64) ([]entity.User, error)
 	GetUserByEmail(ctx context.Context, loginOrEmail string) (entity.User, error)
 	GetUsersBySex(ctx context.Context, sex string) ([]entity.User, error)
 	UpdateUserInfo(ctx context.Context, u entity.User) error
@@ -110,6 +111,17 @@ func (h *UserHandler) GetUserByAge(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewDecoder(r.Body).Decode(&age); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
+	}
+
+	u, err := h.userRepo.GetUsersByAge(r.Context(), age.MinAge, age.MaxAge)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	if err := json.NewEncoder(w).Encode(u); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
 	}
 }
 
