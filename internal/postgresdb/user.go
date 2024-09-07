@@ -42,8 +42,9 @@ func (p *PgxUserRepo) GetUserByEmail(ctx context.Context, email string) (entity.
 	return u, nil
 }
 
-func (p *PgxUserRepo) GetUsersBySex(ctx context.Context, sex string) ([]entity.User, error) {
-	rows, err := p.pool.Query(ctx, "select id from users where sex = $1", sex)
+func (p *PgxUserRepo) GetUsersByAge(ctx context.Context, minAge, maxAge int64) ([]entity.User, error) {
+	rows, err := p.pool.Query(ctx, "select id, sex, dateofbirth, country, city from users where EXTRACT(YEAR FROM AGE(dateofbirth)) BETWEEN $1 AND $2",
+		minAge, maxAge)
 	if err != nil {
 		return []entity.User{}, err
 	}
@@ -61,7 +62,33 @@ func (p *PgxUserRepo) GetUsersBySex(ctx context.Context, sex string) ([]entity.U
 			&u.City,
 		)
 		if err != nil {
-			return nil, err
+			return []entity.User{}, err
+		}
+		users = append(users, u)
+	}
+	return users, nil
+}
+
+func (p *PgxUserRepo) GetUsersBySex(ctx context.Context, sex string) ([]entity.User, error) {
+	rows, err := p.pool.Query(ctx, "select id, sex, dateofbirth, country, city from users where sex = $1", sex)
+	if err != nil {
+		return []entity.User{}, err
+	}
+	defer rows.Close()
+
+	var users []entity.User
+
+	for rows.Next() {
+		var u entity.User
+		err := rows.Scan(
+			&u.ID,
+			&u.Sex,
+			&u.DateOfBirth,
+			&u.Country,
+			&u.City,
+		)
+		if err != nil {
+			return []entity.User{}, err // ??здесь же может быть что-то записано
 		}
 		users = append(users, u)
 	}

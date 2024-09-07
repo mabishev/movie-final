@@ -93,6 +93,26 @@ func (h *UserHandler) SignIn(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
+type Age struct {
+	MinAge int64 `json:"minage"`
+	MaxAge int64 `json:"maxage"`
+}
+
+func (h *UserHandler) GetUserByAge(w http.ResponseWriter, r *http.Request) {
+	_, ok := r.Context().Value(middleware.UserContextKey).(*auth.Claims)
+	if !ok {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	var age Age
+
+	if err := json.NewDecoder(r.Body).Decode(&age); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+}
+
 type UserBySex struct {
 	Sex string `json:"sex"`
 }
