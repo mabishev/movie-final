@@ -14,7 +14,7 @@ type MoviesRepo interface {
 	CreateMovie(ctx context.Context, e entity.Movie) error
 	GetMovies(ctx context.Context) ([]entity.Movie, error)
 	GetMoviesByID(ctx context.Context, id int64) (entity.Movie, error)
-	UpdateMovie(ctx context.Context, e entity.Movie) error
+	UpdateMovieByID(ctx context.Context, e entity.Movie) error
 	DeleteMovieByID(ctx context.Context, id int64) error
 }
 
@@ -100,7 +100,7 @@ type UpdateMovieRequest struct {
 	Year int    `json:"year"`
 }
 
-func (h *MovieHandler) UpdateMovie(w http.ResponseWriter, r *http.Request) {
+func (h *MovieHandler) UpdateMovieByID(w http.ResponseWriter, r *http.Request) {
 	pathValue := r.PathValue("id")
 	id, err := strconv.ParseInt(pathValue, 10, 64)
 	if err != nil {
@@ -121,7 +121,7 @@ func (h *MovieHandler) UpdateMovie(w http.ResponseWriter, r *http.Request) {
 		Year: update.Year,
 	}
 
-	err = h.moviesRepo.UpdateMovie(r.Context(), m)
+	err = h.moviesRepo.UpdateMovieByID(r.Context(), m)
 	if errors.Is(err, entity.ErrNotFound) { // ???? разве они совпадут?
 		w.WriteHeader(http.StatusNotFound)
 		return

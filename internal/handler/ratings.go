@@ -9,8 +9,8 @@ import (
 )
 
 type RatingsRepo interface {
-	UpdateRating(ctx context.Context, r entity.Rating) error
 	GetUsersByRating(ctx context.Context, movieid, minrating, maxrating int64) ([]entity.User, error)
+	UpdateRating(ctx context.Context, r entity.Rating) error
 }
 
 type RatingsHandler struct {

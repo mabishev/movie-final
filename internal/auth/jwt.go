@@ -16,7 +16,7 @@ type Claims struct { // "claims" = "претензии, требования"
 	jwt.StandardClaims
 }
 
-func GenerateJWT(id int64, role string) (string, error) {
+func GenerateJWT(id int64, email string, role string) (string, error) {
 	// Устанавливаем время жизни токена
 	expirationTime := time.Now().Add(time.Hour * 24) // "expiration time" = "срок годности/действия"
 	claims := &Claims{

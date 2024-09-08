@@ -64,7 +64,7 @@ func (p *PgxMovieRepository) GetMoviesByID(ctx context.Context, id int64) (entit
 	return e, nil
 }
 
-func (p *PgxMovieRepository) UpdateMovie(ctx context.Context, m entity.Movie) error {
+func (p *PgxMovieRepository) UpdateMovieByID(ctx context.Context, m entity.Movie) error {
 	result, err := p.pool.Exec(ctx, "update movie set name = $2, year = $3 where id = $1", m.ID, m.Name, m.Year)
 	if err != nil {
 		return err

@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"encoding/json"
+	"log"
 	"net/http"
 	"time"
 
@@ -84,7 +85,7 @@ func (h *UserHandler) SignIn(w http.ResponseWriter, r *http.Request) {
 	}
 
 	//генерация jwt токена
-	tokenString, err := auth.GenerateJWT(u.ID, u.Email)
+	tokenString, err := auth.GenerateJWT(u.ID, u.Email, "user")
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(w).Encode(map[string]string{"error": "failed to generate token"})
@@ -180,6 +181,29 @@ type UpdateUserInfo struct {
 	City        string    `json:"city"`
 }
 
+func (u *UpdateUserInfo) UnmarshalJSON(data []byte) error {
+	type Alias UpdateUserInfo
+	aux := &struct {
+		DateOfBirth string `json:"dateofbirth"`
+		*Alias
+	}{
+		Alias: (*Alias)(u),
+	}
+
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+
+	// Parse the date from the string format
+	parsedDate, err := time.Parse("2006-01-02", aux.DateOfBirth)
+	if err != nil {
+		return err
+	}
+
+	u.DateOfBirth = parsedDate
+	return nil
+}
+
 func (h *UserHandler) UpdateUserInfo(w http.ResponseWriter, r *http.Request) {
 	// Извлечение данных о пользователе из контекста
 	claims, ok := r.Context().Value(middleware.UserContextKey).(*auth.Claims)
@@ -192,6 +216,7 @@ func (h *UserHandler) UpdateUserInfo(w http.ResponseWriter, r *http.Request) {
 
 	err := json.NewDecoder(r.Body).Decode(&update)
 	if err != nil {
+		log.Println("00")
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}

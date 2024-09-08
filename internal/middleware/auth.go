@@ -11,15 +11,16 @@ import (
 // коллизий с другими значениями, которые могут быть сохранены в контексте.
 type ContextKey string
 
-const UserContextKey ContextKey = "auth_cookie"
+const UserContextKey ContextKey = "auth_token"
 
 func Authorize(roles ...string) func(next http.HandlerFunc) http.HandlerFunc {
 	return func(next http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
-			cookie, err := r.Cookie("auth_cookie")
+			cookie, err := r.Cookie(string(UserContextKey))
 			if err != nil {
 				w.WriteHeader(http.StatusUnauthorized)
 				w.Write([]byte("Отсутствует токен"))
+				//http.Error(w, "Отсутствует токен", http.StatusUnauthorized)
 				return
 			}
 

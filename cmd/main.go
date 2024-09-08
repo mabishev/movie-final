@@ -20,7 +20,7 @@ func main() {
 	defer pool.Close()
 
 	movieRepo := postgresdb.NewMoviesRepository(pool)
-
+	ratingRepo := postgresdb.NewRatingsRepo(pool)
 	userRepo := postgresdb.NewUserRepo(pool)
 
 	mux := http.NewServeMux() // на каждый http запрос запускается отдельная go рутина
@@ -30,19 +30,23 @@ func main() {
 	adminOnly := middleware.Authorize("admin")
 	userAndAdmin := middleware.Authorize("admin", "user")
 
-	mh := handler.NewMovieHandler(movieRepo)
-	mux.HandleFunc("POST /movies", adminOnly(mh.CreateMovie))
-	mux.HandleFunc("GET /movies", userAndAdmin(mh.GetMovies)) //  если будет "/" в конце адреса, то обрабатываются все адреса после слэша
-	mux.HandleFunc("GET /movies/{id}", userAndAdmin(mh.GetMoviesByID))
-	mux.HandleFunc("PUT /movies/{id}", adminOnly(mh.DeleteMovieByID))
-	mux.HandleFunc("DELETE /movies/{id}", adminOnly(mh.DeleteMovieByID))
+	m := handler.NewMovieHandler(movieRepo)
+	mux.HandleFunc("POST /movies", adminOnly(m.CreateMovie))
+	mux.HandleFunc("GET /movies", userAndAdmin(m.GetMovies)) //  если будет "/" в конце адреса, то обрабатываются все адреса после слэша
+	mux.HandleFunc("GET /movies/{id}", userAndAdmin(m.GetMoviesByID))
+	mux.HandleFunc("PUT /movies/{id}", adminOnly(m.UpdateMovieByID))
+	mux.HandleFunc("DELETE /movies/{id}", adminOnly(m.DeleteMovieByID))
 
-	uh := handler.NewUserHandler(userRepo)
-	mux.HandleFunc("POST /user/create", userAndAdmin(uh.CreateUser))
-	mux.HandleFunc("POST /user/auth", userAndAdmin(uh.SignIn))
-	mux.HandleFunc("GET /user/sex", userAndAdmin(uh.GetUsersBySex))
-	mux.HandleFunc("GET /user/age", uh.GetUserByAge)
-	mux.HandleFunc("PUT /user/update", userAndAdmin(uh.UpdateUserInfo))
+	u := handler.NewUserHandler(userRepo)
+	mux.HandleFunc("POST /user/create", u.CreateUser)
+	mux.HandleFunc("POST /user/auth", u.SignIn)
+	mux.HandleFunc("GET /user/sex", userAndAdmin(u.GetUsersBySex))
+	mux.HandleFunc("GET /user/age", userAndAdmin(u.GetUserByAge))
+	mux.HandleFunc("PUT /user/update", userAndAdmin(u.UpdateUserInfo))
+
+	r := handler.NewRatingsHandler(ratingRepo)
+	mux.HandleFunc("GET /ratings/users/rating", r.GetUsersByRatingOfMovie)
+	mux.HandleFunc("PUT /ratings/update", r.UpdateRating)
 
 	server := &http.Server{
 		Addr:    ":8080",
