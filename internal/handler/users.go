@@ -17,6 +17,7 @@ import (
 type UserRepo interface {
 	CreateUser(ctx context.Context, u entity.User) error
 	GetUsersByAge(ctx context.Context, minAge, maxAge int64) ([]entity.User, error)
+	GetUserByCountry(ctx context.Context, country string) ([]entity.User, error)
 	GetUserByEmail(ctx context.Context, loginOrEmail string) (entity.User, error)
 	GetUsersBySex(ctx context.Context, sex string) ([]entity.User, error)
 	UpdateUserInfo(ctx context.Context, u entity.User) error
@@ -136,6 +137,36 @@ func (h *UserHandler) GetUserByAge(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+type GetByCountry struct {
+	Country string `json:"country"`
+}
+
+func (h *UserHandler) GetUserByCountry(w http.ResponseWriter, r *http.Request) {
+	_, ok := r.Context().Value(middleware.UserContextKey).(*auth.Claims)
+	if !ok {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	var country GetByCountry
+	if err := json.NewDecoder(r.Body).Decode(&country); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	users, err := h.userRepo.GetUserByCountry(r.Context(), country.Country)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	if err = json.NewEncoder(w).Encode(users); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+}
+
 type UserBySex struct {
 	Sex string `json:"sex"`
 }
@@ -146,19 +177,15 @@ func (h *UserHandler) GetUsersBySex(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
+
 	var userBySex UserBySex
 
-	err := json.NewDecoder(r.Body).Decode(&userBySex)
-	if err != nil {
+	if err := json.NewDecoder(r.Body).Decode(&userBySex); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	u := entity.User{
-		Sex: userBySex.Sex,
-	}
-
-	users, err := h.userRepo.GetUsersBySex(r.Context(), u.Sex)
+	users, err := h.userRepo.GetUsersBySex(r.Context(), userBySex.Sex)
 	if err != nil {
 		//http.Error(w, "Failed to get users", http.StatusInternalServerError)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -167,7 +194,7 @@ func (h *UserHandler) GetUsersBySex(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusOK)
 
-	if err := json.NewEncoder(w).Encode(users); err != nil {
+	if err = json.NewEncoder(w).Encode(users); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 	}
 }
@@ -202,6 +229,17 @@ func (u *UpdateUserInfo) UnmarshalJSON(data []byte) error {
 
 	u.DateOfBirth = parsedDate
 	return nil
+}
+
+func (u *UpdateUserInfo) MarshalJSON() ([]byte, error) { // не работает?
+	type Alias UpdateUserInfo
+	return json.Marshal(&struct {
+		DateOfBirth string `json:"dateofbirth"`
+		*Alias
+	}{
+		DateOfBirth: u.DateOfBirth.Format("2006-01-02"),
+		Alias:       (*Alias)(u),
+	})
 }
 
 func (h *UserHandler) UpdateUserInfo(w http.ResponseWriter, r *http.Request) {
