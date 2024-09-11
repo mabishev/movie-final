@@ -18,17 +18,14 @@ func Authorize(roles ...string) func(next http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
 			cookie, err := r.Cookie(string(UserContextKey))
 			if err != nil {
-				w.WriteHeader(http.StatusUnauthorized)
-				w.Write([]byte("Отсутствует токен"))
-				//http.Error(w, "Отсутствует токен", http.StatusUnauthorized)
+				http.Error(w, "Отсутствует токен", http.StatusUnauthorized)
 				return
 			}
 
 			// Проверяем JWT токен
 			claims, err := auth.ValidationJWT(cookie.Value)
 			if err != nil {
-				w.WriteHeader(http.StatusUnauthorized)
-				w.Write([]byte("Неверный токен"))
+				http.Error(w, "Неверный токен", http.StatusUnauthorized)
 				return
 			}
 

@@ -3,7 +3,6 @@ package handler
 import (
 	"context"
 	"encoding/json"
-	"log"
 	"net/http"
 	"time"
 
@@ -15,11 +14,12 @@ import (
 )
 
 type UserRepo interface {
-	CreateUser(ctx context.Context, u entity.User) error
-	GetUsersByAge(ctx context.Context, minAge, maxAge int64) ([]entity.User, error)
+	CreateUser(ctx context.Context, u entity.CreateUser) error
+	GetUserByEmail(ctx context.Context, loginOrEmail string) (entity.CreateUser, error)
+	GetUserByAge(ctx context.Context, minAge, maxAge int64) ([]entity.User, error)
 	GetUserByCountry(ctx context.Context, country string) ([]entity.User, error)
-	GetUserByEmail(ctx context.Context, loginOrEmail string) (entity.User, error)
-	GetUsersBySex(ctx context.Context, sex string) ([]entity.User, error)
+	GetUserByCity(ctx context.Context, city string) ([]entity.User, error)
+	GetUserBySex(ctx context.Context, sex string) ([]entity.User, error)
 	UpdateUserInfo(ctx context.Context, u entity.User) error
 }
 
@@ -44,7 +44,7 @@ func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	u := entity.User{
+	u := entity.CreateUser{
 		Email:    create.Email,
 		Password: create.Password,
 	}
@@ -77,7 +77,6 @@ func (h *UserHandler) SignIn(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Сравнение пароля с хэшированным паролем
 	err = bcrypt.CompareHashAndPassword([]byte(u.Password), []byte(request.Password))
 	if err != nil {
 		w.WriteHeader(http.StatusUnauthorized)
@@ -85,7 +84,6 @@ func (h *UserHandler) SignIn(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	//генерация jwt токена
 	tokenString, err := auth.GenerateJWT(u.ID, u.Email, "user")
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -93,7 +91,6 @@ func (h *UserHandler) SignIn(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Установка куки с JWT токеном
 	http.SetCookie(w, &http.Cookie{
 		Name:     "auth_token",
 		Value:    tokenString,
@@ -125,7 +122,7 @@ func (h *UserHandler) GetUserByAge(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	u, err := h.userRepo.GetUsersByAge(r.Context(), age.MinAge, age.MaxAge)
+	u, err := h.userRepo.GetUserByAge(r.Context(), age.MinAge, age.MaxAge)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -167,11 +164,65 @@ func (h *UserHandler) GetUserByCountry(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+type GetCity struct {
+	City string `json:"city"`
+}
+type CityResponse struct {
+	ID          int64
+	Name        string
+	Surname     string
+	Sex         string
+	DateOfBirth string
+	Country     string
+	City        string
+}
+
+func (h *UserHandler) GetUserByCity(w http.ResponseWriter, r *http.Request) {
+	_, ok := r.Context().Value(middleware.UserContextKey).(*auth.Claims)
+	if !ok {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	var c GetCity
+	if err := json.NewDecoder(r.Body).Decode(&c); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	users, err := h.userRepo.GetUserByCity(r.Context(), c.City)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	var cityResponse []CityResponse
+	// foramting "2006-01-02"
+	for _, u := range users {
+		city := CityResponse{
+			ID:          u.ID,
+			Name:        u.Name,
+			Surname:     u.Surname,
+			Sex:         u.Sex,
+			DateOfBirth: u.DateOfBirth.Format("2006-01-02"),
+			Country:     u.Country,
+			City:        u.City,
+		}
+		cityResponse = append(cityResponse, city)
+	}
+
+	w.WriteHeader(http.StatusOK)
+	if err := json.NewEncoder(w).Encode(cityResponse); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+}
+
 type UserBySex struct {
 	Sex string `json:"sex"`
 }
 
-func (h *UserHandler) GetUsersBySex(w http.ResponseWriter, r *http.Request) {
+func (h *UserHandler) GetUserBySex(w http.ResponseWriter, r *http.Request) {
 	_, ok := r.Context().Value(middleware.UserContextKey).(*auth.Claims)
 	if !ok {
 		w.WriteHeader(http.StatusUnauthorized)
@@ -185,7 +236,7 @@ func (h *UserHandler) GetUsersBySex(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	users, err := h.userRepo.GetUsersBySex(r.Context(), userBySex.Sex)
+	users, err := h.userRepo.GetUserBySex(r.Context(), userBySex.Sex)
 	if err != nil {
 		//http.Error(w, "Failed to get users", http.StatusInternalServerError)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -206,6 +257,17 @@ type UpdateUserInfo struct {
 	DateOfBirth time.Time `json:"dateofbirth"`
 	Country     string    `json:"country"`
 	City        string    `json:"city"`
+}
+
+func (u *UpdateUserInfo) MarshalJSON() ([]byte, error) { // не работает?
+	type Alias UpdateUserInfo
+	return json.Marshal(&struct {
+		DateOfBirth string `json:"dateofbirth"`
+		*Alias
+	}{
+		DateOfBirth: u.DateOfBirth.Format("2006-01-02"),
+		Alias:       (*Alias)(u),
+	})
 }
 
 func (u *UpdateUserInfo) UnmarshalJSON(data []byte) error {
@@ -231,17 +293,6 @@ func (u *UpdateUserInfo) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-func (u *UpdateUserInfo) MarshalJSON() ([]byte, error) { // не работает?
-	type Alias UpdateUserInfo
-	return json.Marshal(&struct {
-		DateOfBirth string `json:"dateofbirth"`
-		*Alias
-	}{
-		DateOfBirth: u.DateOfBirth.Format("2006-01-02"),
-		Alias:       (*Alias)(u),
-	})
-}
-
 func (h *UserHandler) UpdateUserInfo(w http.ResponseWriter, r *http.Request) {
 	// Извлечение данных о пользователе из контекста
 	claims, ok := r.Context().Value(middleware.UserContextKey).(*auth.Claims)
@@ -254,7 +305,6 @@ func (h *UserHandler) UpdateUserInfo(w http.ResponseWriter, r *http.Request) {
 
 	err := json.NewDecoder(r.Body).Decode(&update)
 	if err != nil {
-		log.Println("00")
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}

@@ -40,13 +40,15 @@ func main() {
 	u := handler.NewUserHandler(userRepo)
 	mux.HandleFunc("POST /user/create", u.CreateUser)
 	mux.HandleFunc("POST /user/auth", u.SignIn)
-	mux.HandleFunc("GET /user/sex", userAndAdmin(u.GetUsersBySex))
 	mux.HandleFunc("GET /user/age", userAndAdmin(u.GetUserByAge))
+	mux.HandleFunc("GET /user/country", userAndAdmin(u.GetUserByCountry))
+	mux.HandleFunc("GET /user/city", userAndAdmin(u.GetUserByCity))
+	mux.HandleFunc("GET /user/sex", userAndAdmin(u.GetUserBySex))
 	mux.HandleFunc("PUT /user/update", userAndAdmin(u.UpdateUserInfo))
 
 	r := handler.NewRatingsHandler(ratingRepo)
-	mux.HandleFunc("GET /ratings/users/rating", r.GetUsersByRatingOfMovie)
-	mux.HandleFunc("PUT /ratings/update", r.UpdateRating)
+	mux.HandleFunc("GET /ratings/users/rating", userAndAdmin(r.GetUsersByRatingOfMovie))
+	mux.HandleFunc("PUT /ratings/update", userAndAdmin(r.UpdateRating))
 
 	server := &http.Server{
 		Addr:    ":8080",
