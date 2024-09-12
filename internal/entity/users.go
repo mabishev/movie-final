@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-type CreateUser struct {
+type User struct {
 	ID          int64
 	Email       string
 	Password    string
@@ -17,14 +17,9 @@ type CreateUser struct {
 	City        string
 }
 
-type User struct {
-	ID          int64
-	Name        string
-	Surname     string
-	Sex         string
-	DateOfBirth time.Time
-	Country     string
-	City        string
+type UserWithRating struct {
+	Users  User
+	Rating int64
 }
 
 var ErrUserNotFound error = errors.New("user not found")

@@ -8,11 +8,10 @@ import (
 	"github.com/marcokz/movie-final/internal/auth"
 	"github.com/marcokz/movie-final/internal/entity"
 	"github.com/marcokz/movie-final/internal/middleware"
-	"github.com/marcokz/movie-final/internal/postgresdb"
 )
 
 type RatingsRepo interface {
-	GetUsersByRatingOfMovie(ctx context.Context, movieid, minrating, maxrating int64) ([]postgresdb.UserWithRating, error)
+	GetUsersByRatingOfMovie(ctx context.Context, movieid, minrating, maxrating int64) ([]entity.UserWithRating, error)
 	UpdateRating(ctx context.Context, r entity.Rating) error
 }
 
@@ -42,9 +41,12 @@ func (h *RatingsHandler) GetMovieByRating(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	switch {
-	case getMovie.MinRating < 1 || getMovie.MinRating > 10 && getMovie.MaxRating < 1 || getMovie.MaxRating > 10:
-		http.Error(w, "Need from 1 to 10", http.StatusBadRequest)
+	switch { // !!!! отдельная функция
+	case getMovie.MinRating < 1 || getMovie.MinRating > 10:
+		http.Error(w, "MinRating from 1 to 10", http.StatusBadRequest)
+		return
+	case getMovie.MaxRating < 1 || getMovie.MaxRating > 10:
+		http.Error(w, "MaxRating from 1 to 10", http.StatusBadRequest)
 		return
 	case getMovie.MinRating > getMovie.MaxRating:
 		http.Error(w, "Min rating is higher than max", http.StatusBadRequest)

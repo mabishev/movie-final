@@ -15,16 +15,32 @@ func NewRatingsRepo(p *pgxpool.Pool) *PgxRatingsRepo {
 	return &PgxRatingsRepo{pool: p}
 }
 
-// func (p *PgxRatingsRepo) GetMovieByRating(ctx context.Context, minrating, maxrating int64) ([]entity.Movie, error) {
-// 	p.pool.Query(ctx, "select movieid")
-// }
-
-type UserWithRating struct {
-	User   entity.User
+type MovieWithRating struct {
+	Movie  entity.Movie
 	Rating int64
 }
 
-func (p *PgxRatingsRepo) GetUsersByRatingOfMovie(ctx context.Context, movieid, minrating, maxrating int64) ([]UserWithRating, error) {
+// func (p *PgxRatingsRepo) GetMovieByRating(ctx context.Context, userid, minrating, maxrating int64) ([]MovieWithRating, error) {
+// 	rows, err := p.pool.Query(ctx, "select movieid, rating from ratings where userid = $1 and rating BETWEEN $2 AND $3", userid, minrating, maxrating)
+// 	if err != nil {
+// 		return []MovieWithRating{}, err
+// 	}
+
+// 	var movies []MovieWithRating
+// 	for rows.Next() {
+// 		var m MovieWithRating
+// 		var rating int64
+// 		err := rows.Scan(
+// 			&rating,
+// 			&m.Movie.ID,
+// 			&m.Movie.Name,
+// 			&m.Movie.Year,
+// 		)
+// 		if err
+// 	}
+// }
+
+func (p *PgxRatingsRepo) GetUsersByRatingOfMovie(ctx context.Context, movieid, minrating, maxrating int64) ([]entity.UserWithRating, error) {
 	rows, err := p.pool.Query(ctx, `
 	select r.rating, u.id, u.name, u.surname, u.sex, u.dateofbirth, u.country, u.city 
 	from ratings r
@@ -32,11 +48,11 @@ func (p *PgxRatingsRepo) GetUsersByRatingOfMovie(ctx context.Context, movieid, m
 	where r.movieid = $1 AND r.rating BETWEEN $2 AND $3
 	`, movieid, minrating, maxrating)
 	if err != nil {
-		return []UserWithRating{}, err
+		return []entity.UserWithRating{}, err
 	}
 	defer rows.Close()
 
-	var usersWithRating []UserWithRating
+	var usersWithRating []entity.UserWithRating
 
 	for rows.Next() {
 		var u entity.User
@@ -54,7 +70,7 @@ func (p *PgxRatingsRepo) GetUsersByRatingOfMovie(ctx context.Context, movieid, m
 		if err != nil {
 			return nil, err
 		}
-		usersWithRating = append(usersWithRating, UserWithRating{User: u, Rating: rating})
+		usersWithRating = append(usersWithRating, entity.UserWithRating{Users: u, Rating: rating})
 	}
 
 	if err := rows.Err(); err != nil {

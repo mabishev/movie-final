@@ -17,7 +17,7 @@ func NewUserRepo(p *pgxpool.Pool) *PgxUserRepo {
 	return &PgxUserRepo{pool: p}
 }
 
-func (p *PgxUserRepo) CreateUser(ctx context.Context, u entity.CreateUser) error {
+func (p *PgxUserRepo) CreateUser(ctx context.Context, u entity.User) error {
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(u.Password), bcrypt.DefaultCost)
 	if err != nil {
 		return err
@@ -31,8 +31,8 @@ func (p *PgxUserRepo) CreateUser(ctx context.Context, u entity.CreateUser) error
 	return nil
 }
 
-func (p *PgxUserRepo) GetUserByEmail(ctx context.Context, email string) (entity.CreateUser, error) {
-	var u entity.CreateUser
+func (p *PgxUserRepo) GetUserByEmail(ctx context.Context, email string) (entity.User, error) {
+	var u entity.User
 	err := p.pool.QueryRow(ctx, "select id, email, password from users where email = $1", email).
 		Scan(&u.ID, &u.Email, &u.Password)
 	if err != nil {

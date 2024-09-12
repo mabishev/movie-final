@@ -14,8 +14,8 @@ import (
 )
 
 type UserRepo interface {
-	CreateUser(ctx context.Context, u entity.CreateUser) error
-	GetUserByEmail(ctx context.Context, loginOrEmail string) (entity.CreateUser, error)
+	CreateUser(ctx context.Context, u entity.User) error
+	GetUserByEmail(ctx context.Context, loginOrEmail string) (entity.User, error)
 	GetUserByAge(ctx context.Context, minAge, maxAge int64) ([]entity.User, error)
 	GetUserByCountry(ctx context.Context, country string) ([]entity.User, error)
 	GetUserByCity(ctx context.Context, city string) ([]entity.User, error)
@@ -36,6 +36,16 @@ type CreateUserUser struct {
 	Password string `json:"password"`
 }
 
+type User struct {
+	ID          int64
+	Name        string
+	Surname     string
+	Sex         string
+	DateOfBirth string
+	Country     string
+	City        string
+}
+
 func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	var create CreateUserUser
 
@@ -44,7 +54,7 @@ func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	u := entity.CreateUser{
+	u := entity.User{
 		Email:    create.Email,
 		Password: create.Password,
 	}
@@ -55,6 +65,8 @@ func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
 		return
 	}
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(map[string]string{"message": "user create successfully"})
 }
 
 type SignInRequest struct {
@@ -122,16 +134,14 @@ func (h *UserHandler) GetUserByAge(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	u, err := h.userRepo.GetUserByAge(r.Context(), age.MinAge, age.MaxAge)
+	users, err := h.userRepo.GetUserByAge(r.Context(), age.MinAge, age.MaxAge)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
 	w.WriteHeader(http.StatusOK)
-	if err := json.NewEncoder(w).Encode(u); err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-	}
+	json.NewEncoder(w).Encode(users)
 }
 
 type GetByCountry struct {
@@ -158,10 +168,7 @@ func (h *UserHandler) GetUserByCountry(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
-	if err = json.NewEncoder(w).Encode(users); err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
+	json.NewEncoder(w).Encode(users)
 }
 
 type GetCity struct {
@@ -196,8 +203,8 @@ func (h *UserHandler) GetUserByCity(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var cityResponse []CityResponse
-	// foramting "2006-01-02"
+	cityResponse := make([]CityResponse, 0, len(users)) //!!!!оптимизация памяти
+
 	for _, u := range users {
 		city := CityResponse{
 			ID:          u.ID,
@@ -212,10 +219,7 @@ func (h *UserHandler) GetUserByCity(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
-	if err := json.NewEncoder(w).Encode(cityResponse); err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
+	json.NewEncoder(w).Encode(cityResponse)
 }
 
 type UserBySex struct {
@@ -238,72 +242,30 @@ func (h *UserHandler) GetUserBySex(w http.ResponseWriter, r *http.Request) {
 
 	users, err := h.userRepo.GetUserBySex(r.Context(), userBySex.Sex)
 	if err != nil {
-		//http.Error(w, "Failed to get users", http.StatusInternalServerError)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
 	w.WriteHeader(http.StatusOK)
-
-	if err = json.NewEncoder(w).Encode(users); err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-	}
-}
-
-type UpdateUserInfo struct {
-	Name        string    `json:"name"`
-	Surname     string    `json:"surname"`
-	Sex         string    `json:"sex"`
-	DateOfBirth time.Time `json:"dateofbirth"`
-	Country     string    `json:"country"`
-	City        string    `json:"city"`
-}
-
-func (u *UpdateUserInfo) MarshalJSON() ([]byte, error) { // не работает?
-	type Alias UpdateUserInfo
-	return json.Marshal(&struct {
-		DateOfBirth string `json:"dateofbirth"`
-		*Alias
-	}{
-		DateOfBirth: u.DateOfBirth.Format("2006-01-02"),
-		Alias:       (*Alias)(u),
-	})
-}
-
-func (u *UpdateUserInfo) UnmarshalJSON(data []byte) error {
-	type Alias UpdateUserInfo
-	aux := &struct {
-		DateOfBirth string `json:"dateofbirth"`
-		*Alias
-	}{
-		Alias: (*Alias)(u),
-	}
-
-	if err := json.Unmarshal(data, &aux); err != nil {
-		return err
-	}
-
-	// Parse the date from the string format
-	parsedDate, err := time.Parse("2006-01-02", aux.DateOfBirth)
-	if err != nil {
-		return err
-	}
-
-	u.DateOfBirth = parsedDate
-	return nil
+	json.NewEncoder(w).Encode(users)
 }
 
 func (h *UserHandler) UpdateUserInfo(w http.ResponseWriter, r *http.Request) {
-	// Извлечение данных о пользователе из контекста
 	claims, ok := r.Context().Value(middleware.UserContextKey).(*auth.Claims)
 	if !ok {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
 
-	var update UpdateUserInfo
+	var update User
 
 	err := json.NewDecoder(r.Body).Decode(&update)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	parsedDate, err := time.Parse("2006-01-02", update.DateOfBirth)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
@@ -314,7 +276,7 @@ func (h *UserHandler) UpdateUserInfo(w http.ResponseWriter, r *http.Request) {
 		Name:        update.Name,
 		Surname:     update.Surname,
 		Sex:         update.Sex,
-		DateOfBirth: update.DateOfBirth,
+		DateOfBirth: parsedDate,
 		Country:     update.Country,
 		City:        update.City,
 	}
