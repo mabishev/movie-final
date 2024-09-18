@@ -20,25 +20,36 @@ type MovieWithRating struct {
 	Rating int64
 }
 
-// func (p *PgxRatingsRepo) GetMovieByRating(ctx context.Context, userid, minrating, maxrating int64) ([]MovieWithRating, error) {
-// 	rows, err := p.pool.Query(ctx, "select movieid, rating from ratings where userid = $1 and rating BETWEEN $2 AND $3", userid, minrating, maxrating)
-// 	if err != nil {
-// 		return []MovieWithRating{}, err
-// 	}
+func (p *PgxRatingsRepo) GetUserRatedMovie(ctx context.Context, userid, minrating, maxrating int64) ([]MovieWithRating, error) {
+	rows, err := p.pool.Query(ctx, "select movieid, rating from ratings where userid = $1 and rating BETWEEN $2 AND $3", userid, minrating, maxrating)
+	if err != nil {
+		return []MovieWithRating{}, err
+	}
+	defer rows.Close()
 
-// 	var movies []MovieWithRating
-// 	for rows.Next() {
-// 		var m MovieWithRating
-// 		var rating int64
-// 		err := rows.Scan(
-// 			&rating,
-// 			&m.Movie.ID,
-// 			&m.Movie.Name,
-// 			&m.Movie.Year,
-// 		)
-// 		if err
-// 	}
-// }
+	var movies []MovieWithRating
+
+	for rows.Next() {
+		var m MovieWithRating
+		var rating int64
+		err := rows.Scan(
+			&rating,
+			&m.Movie.ID,
+			&m.Movie.Name,
+			&m.Movie.Year,
+		)
+		if err != nil {
+			return []MovieWithRating{}, err
+		}
+		movies = append(movies, m)
+	}
+
+	if err := rows.Err(); err != nil {
+		return []MovieWithRating{}, err
+	}
+
+	return movies, nil
+}
 
 func (p *PgxRatingsRepo) GetUsersByRatingOfMovie(ctx context.Context, movieid, minrating, maxrating int64) ([]entity.UserWithRating, error) {
 	rows, err := p.pool.Query(ctx, `
@@ -68,23 +79,28 @@ func (p *PgxRatingsRepo) GetUsersByRatingOfMovie(ctx context.Context, movieid, m
 			&u.City,
 		)
 		if err != nil {
-			return nil, err
+			return []entity.UserWithRating{}, err
 		}
 		usersWithRating = append(usersWithRating, entity.UserWithRating{Users: u, Rating: rating})
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, err
+		return []entity.UserWithRating{}, err
 	}
 
 	return usersWithRating, err
 }
 
 func (p *PgxRatingsRepo) UpdateRating(ctx context.Context, r entity.Rating) error {
-	_, err := p.pool.Exec(ctx, "insert into ratings(userid, movieid, rating) values ($1, $2, $3) ON CONFLICT (userid, movieid) DO UPDATE SET rating = EXCLUDED.rating",
+	result, err := p.pool.Exec(ctx, "insert into ratings(userid, movieid, rating) values ($1, $2, $3) ON CONFLICT (userid, movieid) DO UPDATE SET rating = EXCLUDED.rating",
 		r.UserId, r.MovieID, r.Rating)
 	if err != nil {
 		return err
 	}
+
+	if result.RowsAffected() == 0 {
+		return entity.ErrMovieNotFound //??
+	}
+
 	return nil
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"net/mail"
 	"time"
 
 	"github.com/marcokz/movie-final/internal/auth"
@@ -31,7 +32,7 @@ func NewUserHandler(u UserRepo) *UserHandler {
 	return &UserHandler{userRepo: u}
 }
 
-type CreateUserUser struct {
+type CreateUser struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
 }
@@ -47,19 +48,25 @@ type User struct {
 }
 
 func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
-	var create CreateUserUser
+	var create CreateUser
 
 	if err := json.NewDecoder(r.Body).Decode(&create); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
+	e, err := mail.ParseAddress(create.Email)
+	if err != nil {
+		http.Error(w, "Incorrect email", http.StatusBadRequest)
+		return
+	}
+
 	u := entity.User{
-		Email:    create.Email,
+		Email:    e.Address,
 		Password: create.Password,
 	}
 
-	err := h.userRepo.CreateUser(context.Background(), u)
+	err = h.userRepo.CreateUser(context.Background(), u)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
@@ -140,8 +147,24 @@ func (h *UserHandler) GetUserByAge(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	userResp := make([]User, 0, len(users))
+
+	for _, user := range users {
+		u := User{
+			ID:          user.ID,
+			Name:        user.Name,
+			Surname:     user.Surname,
+			Sex:         user.Sex,
+			DateOfBirth: user.DateOfBirth.Format("2006-01-02"),
+			Country:     user.Country,
+			City:        user.City,
+		}
+		userResp = append(userResp, u)
+
+	}
+
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(users)
+	json.NewEncoder(w).Encode(userResp)
 }
 
 type GetByCountry struct {
@@ -167,21 +190,28 @@ func (h *UserHandler) GetUserByCountry(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	userResp := make([]User, 0, len(users))
+
+	for _, user := range users {
+		u := User{
+			ID:          user.ID,
+			Name:        user.Name,
+			Surname:     user.Surname,
+			Sex:         user.Sex,
+			DateOfBirth: user.DateOfBirth.Format("2006-01-02"),
+			Country:     user.Country,
+			City:        user.City,
+		}
+		userResp = append(userResp, u)
+
+	}
+
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(users)
+	json.NewEncoder(w).Encode(userResp)
 }
 
 type GetCity struct {
 	City string `json:"city"`
-}
-type CityResponse struct {
-	ID          int64
-	Name        string
-	Surname     string
-	Sex         string
-	DateOfBirth string
-	Country     string
-	City        string
 }
 
 func (h *UserHandler) GetUserByCity(w http.ResponseWriter, r *http.Request) {
@@ -203,10 +233,10 @@ func (h *UserHandler) GetUserByCity(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cityResponse := make([]CityResponse, 0, len(users)) //!!!!оптимизация памяти
+	userResp := make([]User, 0, len(users))
 
 	for _, u := range users {
-		city := CityResponse{
+		city := User{
 			ID:          u.ID,
 			Name:        u.Name,
 			Surname:     u.Surname,
@@ -215,11 +245,11 @@ func (h *UserHandler) GetUserByCity(w http.ResponseWriter, r *http.Request) {
 			Country:     u.Country,
 			City:        u.City,
 		}
-		cityResponse = append(cityResponse, city)
+		userResp = append(userResp, city)
 	}
 
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(cityResponse)
+	json.NewEncoder(w).Encode(userResp)
 }
 
 type UserBySex struct {
@@ -246,8 +276,23 @@ func (h *UserHandler) GetUserBySex(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	userResp := make([]User, 0, len(users))
+
+	for _, u := range users {
+		city := User{
+			ID:          u.ID,
+			Name:        u.Name,
+			Surname:     u.Surname,
+			Sex:         u.Sex,
+			DateOfBirth: u.DateOfBirth.Format("2006-01-02"),
+			Country:     u.Country,
+			City:        u.City,
+		}
+		userResp = append(userResp, city)
+	}
+
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(users)
+	json.NewEncoder(w).Encode(userResp)
 }
 
 func (h *UserHandler) UpdateUserInfo(w http.ResponseWriter, r *http.Request) {

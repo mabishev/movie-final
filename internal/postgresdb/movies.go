@@ -22,7 +22,8 @@ func (p *PgxMovieRepository) CreateMovie(ctx context.Context, m entity.Movie) er
 	if err != nil {
 		return errors.New("the movie already exists")
 	}
-	return err
+
+	return nil
 }
 
 func (p *PgxMovieRepository) GetMovies(ctx context.Context) ([]entity.Movie, error) {
@@ -42,22 +43,27 @@ func (p *PgxMovieRepository) GetMovies(ctx context.Context) ([]entity.Movie, err
 			&m.Year,
 		)
 		if err != nil {
-			return nil, err
+			return []entity.Movie{}, err
 		}
 		movies = append(movies, m)
 	}
+
+	if err := rows.Err(); err != nil {
+		return []entity.Movie{}, err
+	}
+
 	return movies, nil
 }
 
 func (p *PgxMovieRepository) GetMoviesByID(ctx context.Context, id int64) (entity.Movie, error) {
-	row := p.pool.QueryRow(ctx, "select id, name, year from movie where id = $1", id)
-
 	var e entity.Movie
-	err := row.Scan(&e.ID, &e.Name, &e.Year)
-	if errors.Is(err, pgx.ErrNoRows) { //???
-		return entity.Movie{}, entity.ErrNotFound
-	}
+
+	err := p.pool.QueryRow(ctx, "select id, name, year from movie where id = $1", id).
+		Scan(&e.ID, &e.Name, &e.Year)
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return entity.Movie{}, entity.ErrMovieNotFound
+		}
 		return entity.Movie{}, err
 	}
 
@@ -69,14 +75,23 @@ func (p *PgxMovieRepository) UpdateMovieByID(ctx context.Context, m entity.Movie
 	if err != nil {
 		return err
 	}
-	// Возвращаем ErrNotFound, если запись не была найдена и обновлена
+
 	if result.RowsAffected() == 0 {
-		return entity.ErrNotFound
+		return entity.ErrMovieNotFound
 	}
+
 	return nil
 }
 
 func (p *PgxMovieRepository) DeleteMovieByID(ctx context.Context, id int64) error {
-	_, err := p.pool.Exec(ctx, "delete from movie where id = $1", id)
-	return err
+	result, err := p.pool.Exec(ctx, "delete from movie where id = $1", id)
+	if err != nil {
+		return err
+	}
+
+	if result.RowsAffected() == 0 {
+		return entity.ErrMovieNotFound
+	}
+
+	return nil
 }

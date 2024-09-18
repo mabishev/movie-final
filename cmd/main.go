@@ -32,8 +32,8 @@ func main() {
 
 	m := handler.NewMovieHandler(movieRepo)
 	mux.HandleFunc("POST /movies", adminOnly(m.CreateMovie))
-	mux.HandleFunc("GET /movies", userAndAdmin(m.GetMovies)) //  если будет "/" в конце адреса, то обрабатываются все адреса после слэша
-	mux.HandleFunc("GET /movies/{id}", userAndAdmin(m.GetMoviesByID))
+	mux.HandleFunc("GET /movies", m.GetMovies)
+	mux.HandleFunc("GET /movies/{id}", m.GetMoviesByID)
 	mux.HandleFunc("PUT /movies/{id}", adminOnly(m.UpdateMovieByID))
 	mux.HandleFunc("DELETE /movies/{id}", adminOnly(m.DeleteMovieByID))
 

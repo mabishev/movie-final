@@ -2,7 +2,9 @@ package postgresdb
 
 import (
 	"context"
+	"errors"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/marcokz/movie-final/internal/entity"
 
@@ -25,7 +27,7 @@ func (p *PgxUserRepo) CreateUser(ctx context.Context, u entity.User) error {
 
 	_, err = p.pool.Exec(ctx, "insert into users (email, password) values ($1, $2)", u.Email, hashedPassword)
 	if err != nil {
-		return err
+		return errors.New("the user already exists")
 	}
 
 	return nil
@@ -36,7 +38,10 @@ func (p *PgxUserRepo) GetUserByEmail(ctx context.Context, email string) (entity.
 	err := p.pool.QueryRow(ctx, "select id, email, password from users where email = $1", email).
 		Scan(&u.ID, &u.Email, &u.Password)
 	if err != nil {
-		return u, err
+		if errors.Is(err, pgx.ErrNoRows) {
+			return entity.User{}, entity.ErrUserNotFound
+		}
+		return entity.User{}, err
 	}
 
 	return u, nil
@@ -66,6 +71,10 @@ func (p *PgxUserRepo) GetUserByAge(ctx context.Context, minAge, maxAge int64) ([
 		}
 		users = append(users, u)
 	}
+
+	if err := rows.Err(); err != nil {
+		return []entity.User{}, err
+	}
 	return users, nil
 }
 
@@ -94,6 +103,11 @@ func (p *PgxUserRepo) GetUserByCountry(ctx context.Context, country string) ([]e
 		}
 		users = append(users, u)
 	}
+
+	if err := rows.Err(); err != nil {
+		return []entity.User{}, err
+	}
+
 	return users, nil
 }
 
@@ -122,6 +136,11 @@ func (p *PgxUserRepo) GetUserByCity(ctx context.Context, city string) ([]entity.
 		}
 		users = append(users, u)
 	}
+
+	if err := rows.Err(); err != nil {
+		return []entity.User{}, err
+	}
+
 	return users, nil
 }
 
@@ -150,11 +169,24 @@ func (p *PgxUserRepo) GetUserBySex(ctx context.Context, sex string) ([]entity.Us
 		}
 		users = append(users, u)
 	}
+
+	if err := rows.Err(); err != nil {
+		return []entity.User{}, err
+	}
+
 	return users, nil
 }
 
 func (p *PgxUserRepo) UpdateUserInfo(ctx context.Context, u entity.User) error {
-	_, err := p.pool.Exec(ctx, "update users set name = $2, surname = $3, sex = $4, dateofbirth = $5, country = $6, city = $7 where id = $1",
+	result, err := p.pool.Exec(ctx, "update users set name = $2, surname = $3, sex = $4, dateofbirth = $5, country = $6, city = $7 where id = $1",
 		u.ID, u.Name, u.Surname, u.Sex, u.DateOfBirth, u.Country, u.City)
-	return err
+	if err != nil {
+		return err
+	}
+
+	if result.RowsAffected() == 0 {
+		return entity.ErrUserNotFound
+	}
+
+	return nil
 }

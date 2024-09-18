@@ -24,8 +24,21 @@ func NewRatingsHandler(r RatingsRepo) *RatingsHandler {
 }
 
 type GetMovieByRating struct {
+	UserID    int64 `json:"userid"`
 	MinRating int64 `json:"minrating"`
 	MaxRating int64 `json:"maxrating"`
+}
+
+func CorrectMinMaxRating(minrating, maxrating int64) (string, int) {
+	switch {
+	case minrating < 1 || minrating > 10:
+		return "MinRating from 1 to 10", http.StatusBadRequest
+	case maxrating < 1 || maxrating > 10:
+		return "MaxRating from 1 to 10", http.StatusBadRequest
+	case minrating > maxrating:
+		return "Min rating is higher than max", http.StatusBadRequest
+	}
+	return "", 0
 }
 
 func (h *RatingsHandler) GetMovieByRating(w http.ResponseWriter, r *http.Request) {
@@ -41,18 +54,12 @@ func (h *RatingsHandler) GetMovieByRating(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	switch { // !!!! отдельная функция
-	case getMovie.MinRating < 1 || getMovie.MinRating > 10:
-		http.Error(w, "MinRating from 1 to 10", http.StatusBadRequest)
-		return
-	case getMovie.MaxRating < 1 || getMovie.MaxRating > 10:
-		http.Error(w, "MaxRating from 1 to 10", http.StatusBadRequest)
-		return
-	case getMovie.MinRating > getMovie.MaxRating:
-		http.Error(w, "Min rating is higher than max", http.StatusBadRequest)
-		return
+	str, codeInt := CorrectMinMaxRating(getMovie.MinRating, getMovie.MaxRating)
+	if str != "" && codeInt != 0 {
+		http.Error(w, str, codeInt)
 	}
 
+	h.ratingsRepo.GetMovieByRating
 }
 
 type GetUserByRatingOgMovie struct {
@@ -75,13 +82,9 @@ func (h *RatingsHandler) GetUsersByRatingOfMovie(w http.ResponseWriter, r *http.
 		return
 	}
 
-	switch {
-	case getUser.MinRating < 1 || getUser.MinRating > 10 && getUser.MaxRating < 1 || getUser.MaxRating > 10:
-		http.Error(w, "From 1 to 10", http.StatusBadRequest)
-		return
-	case getUser.MinRating > getUser.MaxRating:
-		http.Error(w, "Min rating is higher than max", http.StatusBadRequest)
-		return
+	str, codeInt := CorrectMinMaxRating(getUser.MinRating, getUser.MaxRating)
+	if str != "" && codeInt != 0 {
+		http.Error(w, str, codeInt)
 	}
 
 	users, err := h.ratingsRepo.GetUsersByRatingOfMovie(r.Context(), getUser.MovieID, getUser.MinRating, getUser.MaxRating)
@@ -90,9 +93,8 @@ func (h *RatingsHandler) GetUsersByRatingOfMovie(w http.ResponseWriter, r *http.
 		return
 	}
 
-	if err := json.NewEncoder(w).Encode(users); err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-	}
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(users)
 }
 
 type UpdateRating struct {
@@ -132,8 +134,5 @@ func (h *RatingsHandler) UpdateRating(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
-	if err = json.NewEncoder(w).Encode(map[string]string{"message": "rating update"}); err != nil {
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-	}
-
+	json.NewEncoder(w).Encode(map[string]string{"message": "rating update"})
 }

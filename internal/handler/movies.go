@@ -7,7 +7,9 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/marcokz/movie-final/internal/auth"
 	"github.com/marcokz/movie-final/internal/entity"
+	"github.com/marcokz/movie-final/internal/middleware"
 )
 
 type MoviesRepo interface {
@@ -26,13 +28,19 @@ func NewMovieHandler(m MoviesRepo) *MovieHandler {
 	return &MovieHandler{moviesRepo: m}
 }
 
-type CreateMovie struct {
+type MovieResp struct {
 	Name string `json:"name"`
 	Year int    `json:"year"`
 }
 
 func (h *MovieHandler) CreateMovie(w http.ResponseWriter, r *http.Request) {
-	var create CreateMovie
+	_, ok := r.Context().Value(middleware.UserContextKey).(*auth.Claims)
+	if !ok {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	var create MovieResp
 
 	if err := json.NewDecoder(r.Body).Decode(&create); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -62,11 +70,7 @@ func (h *MovieHandler) GetMovies(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
-
-	if err := json.NewEncoder(w).Encode(movies); err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
+	json.NewEncoder(w).Encode(movies)
 }
 
 func (h *MovieHandler) GetMoviesByID(w http.ResponseWriter, r *http.Request) {
@@ -78,7 +82,7 @@ func (h *MovieHandler) GetMoviesByID(w http.ResponseWriter, r *http.Request) {
 	}
 
 	m, err := h.moviesRepo.GetMoviesByID(r.Context(), id)
-	if errors.Is(err, entity.ErrNotFound) { //???
+	if errors.Is(err, entity.ErrMovieNotFound) { //???
 		w.WriteHeader(http.StatusNotFound)
 		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
 		return
@@ -89,18 +93,16 @@ func (h *MovieHandler) GetMoviesByID(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
-
-	if err := json.NewEncoder(w).Encode(m); err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-	}
-}
-
-type UpdateMovieRequest struct {
-	Name string `json:"name"`
-	Year int    `json:"year"`
+	json.NewEncoder(w).Encode(m)
 }
 
 func (h *MovieHandler) UpdateMovieByID(w http.ResponseWriter, r *http.Request) {
+	_, ok := r.Context().Value(middleware.UserContextKey).(*auth.Claims)
+	if !ok {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
 	pathValue := r.PathValue("id")
 	id, err := strconv.ParseInt(pathValue, 10, 64)
 	if err != nil {
@@ -108,7 +110,7 @@ func (h *MovieHandler) UpdateMovieByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var update UpdateMovieRequest
+	var update MovieResp
 
 	if err := json.NewDecoder(r.Body).Decode(&update); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -122,7 +124,7 @@ func (h *MovieHandler) UpdateMovieByID(w http.ResponseWriter, r *http.Request) {
 	}
 
 	err = h.moviesRepo.UpdateMovieByID(r.Context(), m)
-	if errors.Is(err, entity.ErrNotFound) { // ???? разве они совпадут?
+	if errors.Is(err, entity.ErrMovieNotFound) { // ???? разве они совпадут?
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
@@ -132,6 +134,12 @@ func (h *MovieHandler) UpdateMovieByID(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *MovieHandler) DeleteMovieByID(w http.ResponseWriter, r *http.Request) {
+	_, ok := r.Context().Value(middleware.UserContextKey).(*auth.Claims)
+	if !ok {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
 	pathValue := r.PathValue("id")
 	id, err := strconv.ParseInt(pathValue, 10, 64)
 	if err != nil {
@@ -140,9 +148,11 @@ func (h *MovieHandler) DeleteMovieByID(w http.ResponseWriter, r *http.Request) {
 	}
 
 	err = h.moviesRepo.DeleteMovieByID(r.Context(), id)
-	if errors.Is(err, entity.ErrNotFound) {
+	if errors.Is(err, entity.ErrMovieNotFound) {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
+
 	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{"message": "movie delete successfully"})
 }
