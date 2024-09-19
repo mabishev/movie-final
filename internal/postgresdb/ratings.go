@@ -15,37 +15,41 @@ func NewRatingsRepo(p *pgxpool.Pool) *PgxRatingsRepo {
 	return &PgxRatingsRepo{pool: p}
 }
 
-type MovieWithRating struct {
-	Movie  entity.Movie
-	Rating int64
-}
+// func (p *PgxRatingsRepo) GetFromMovieUsersWithRating(ctx context.Context, movieid, minrating, maxrating int64) ([]entity.Rating, error) {
+// 	rows, err := p.pool.Query(ctx, "select userid, rating from ratings where movieid = $1 and rating BETWEEN $2 and $3", movieid, minrating, maxrating)
+// 	if err != nil {
+// 		return
+// 	}
+// 	defer rows.Close()
 
-func (p *PgxRatingsRepo) GetUserRatedMovie(ctx context.Context, userid, minrating, maxrating int64) ([]MovieWithRating, error) {
+// }
+
+func (p *PgxRatingsRepo) GetMoviesWithRatingFromUser(ctx context.Context, userid, minrating, maxrating int64) ([]entity.MovieWithRating, error) {
 	rows, err := p.pool.Query(ctx, "select movieid, rating from ratings where userid = $1 and rating BETWEEN $2 AND $3", userid, minrating, maxrating)
 	if err != nil {
-		return []MovieWithRating{}, err
+		return []entity.MovieWithRating{}, err
 	}
 	defer rows.Close()
 
-	var movies []MovieWithRating
+	var movies []entity.MovieWithRating
 
 	for rows.Next() {
-		var m MovieWithRating
+		var m entity.MovieWithRating
 		var rating int64
 		err := rows.Scan(
 			&rating,
-			&m.Movie.ID,
-			&m.Movie.Name,
-			&m.Movie.Year,
+			&m.Movies.ID,
+			&m.Movies.Name,
+			&m.Movies.Year,
 		)
 		if err != nil {
-			return []MovieWithRating{}, err
+			return []entity.MovieWithRating{}, err
 		}
 		movies = append(movies, m)
 	}
 
 	if err := rows.Err(); err != nil {
-		return []MovieWithRating{}, err
+		return []entity.MovieWithRating{}, err
 	}
 
 	return movies, nil
@@ -53,7 +57,7 @@ func (p *PgxRatingsRepo) GetUserRatedMovie(ctx context.Context, userid, minratin
 
 func (p *PgxRatingsRepo) GetUsersByRatingOfMovie(ctx context.Context, movieid, minrating, maxrating int64) ([]entity.UserWithRating, error) {
 	rows, err := p.pool.Query(ctx, `
-	select r.rating, u.id, u.name, u.surname, u.sex, u.dateofbirth, u.country, u.city 
+	select u.id, u.name, u.surname, u.sex, u.dateofbirth, u.country, u.city, r.rating  
 	from ratings r
 	JOIN users u ON r.userid = u.id
 	where r.movieid = $1 AND r.rating BETWEEN $2 AND $3
@@ -69,7 +73,6 @@ func (p *PgxRatingsRepo) GetUsersByRatingOfMovie(ctx context.Context, movieid, m
 		var u entity.User
 		var rating int64
 		err := rows.Scan(
-			&rating,
 			&u.ID,
 			&u.Name,
 			&u.Surname,
@@ -77,11 +80,14 @@ func (p *PgxRatingsRepo) GetUsersByRatingOfMovie(ctx context.Context, movieid, m
 			&u.DateOfBirth,
 			&u.Country,
 			&u.City,
+			&rating,
 		)
 		if err != nil {
 			return []entity.UserWithRating{}, err
 		}
-		usersWithRating = append(usersWithRating, entity.UserWithRating{Users: u, Rating: rating})
+		if u.ID != 0 {
+			usersWithRating = append(usersWithRating, entity.UserWithRating{Users: u, Rating: rating})
+		}
 	}
 
 	if err := rows.Err(); err != nil {

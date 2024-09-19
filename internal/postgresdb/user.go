@@ -48,7 +48,7 @@ func (p *PgxUserRepo) GetUserByEmail(ctx context.Context, email string) (entity.
 }
 
 func (p *PgxUserRepo) GetUserByAge(ctx context.Context, minAge, maxAge int64) ([]entity.User, error) {
-	rows, err := p.pool.Query(ctx, "select id, sex, dateofbirth, country, city from users where EXTRACT(YEAR FROM AGE(dateofbirth)) BETWEEN $1 AND $2",
+	rows, err := p.pool.Query(ctx, "select id, name, surname, sex, dateofbirth, country, city from users where EXTRACT(YEAR FROM AGE(dateofbirth)) BETWEEN $1 AND $2",
 		minAge, maxAge)
 	if err != nil {
 		return []entity.User{}, err
@@ -61,6 +61,8 @@ func (p *PgxUserRepo) GetUserByAge(ctx context.Context, minAge, maxAge int64) ([
 		var u entity.User
 		err := rows.Scan(
 			&u.ID,
+			&u.Name,
+			&u.Surname,
 			&u.Sex,
 			&u.DateOfBirth,
 			&u.Country,

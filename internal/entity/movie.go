@@ -8,4 +8,9 @@ type Movie struct {
 	Year int
 }
 
+type MovieWithRating struct {
+	Movies Movie
+	Rating int64
+}
+
 var ErrMovieNotFound error = errors.New("movie not found")

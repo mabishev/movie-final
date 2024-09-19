@@ -47,6 +47,7 @@ func main() {
 	mux.HandleFunc("PUT /user/update", userAndAdmin(u.UpdateUserInfo))
 
 	r := handler.NewRatingsHandler(ratingRepo)
+	mux.HandleFunc("GET /ratings/movies/rating", userAndAdmin(r.GetMoviesWithRatingFromUser))
 	mux.HandleFunc("GET /ratings/users/rating", userAndAdmin(r.GetUsersByRatingOfMovie))
 	mux.HandleFunc("PUT /ratings/update", userAndAdmin(r.UpdateRating))
 
