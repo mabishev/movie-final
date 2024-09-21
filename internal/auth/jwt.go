@@ -37,7 +37,7 @@ func GenerateJWT(id int64, email string, role string) (string, error) {
 
 func ValidationJWT(tokenStr string) (*Claims, error) {
 	claims := &Claims{}
-	token, err := jwt.ParseWithClaims(tokenStr, claims, func(token *jwt.Token) (interface{}, error) {
+	token, err := jwt.ParseWithClaims(tokenStr, claims, func(t *jwt.Token) (interface{}, error) {
 		return jwtKey, nil
 	})
 	if err != nil {

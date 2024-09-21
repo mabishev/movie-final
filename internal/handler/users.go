@@ -122,6 +122,17 @@ func (h *UserHandler) SignIn(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
+func (h *UserHandler) Logout(w http.ResponseWriter, r *http.Request) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     "jwt",
+		Value:    "",
+		Expires:  time.Now().Add(-time.Hour),
+		HttpOnly: true,
+	})
+
+	json.NewEncoder(w).Encode(map[string]string{"message": "logout"})
+}
+
 type Age struct {
 	MinAge int64 `json:"minage"`
 	MaxAge int64 `json:"maxage"`

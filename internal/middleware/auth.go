@@ -18,7 +18,11 @@ func Authorize(roles ...string) func(next http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
 			cookie, err := r.Cookie(string(UserContextKey))
 			if err != nil {
-				http.Error(w, "Отсутствует токен", http.StatusUnauthorized)
+				if err == http.ErrNoCookie {
+					w.WriteHeader(http.StatusUnauthorized)
+					return
+				}
+				w.WriteHeader(http.StatusBadRequest)
 				return
 			}
 
