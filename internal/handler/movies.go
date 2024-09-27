@@ -29,8 +29,9 @@ func NewMovieHandler(m MoviesRepo) *MovieHandler {
 }
 
 type MovieResp struct {
-	Name string `json:"name"`
-	Year int    `json:"year"`
+	Name        string `json:"name"`
+	Year        int    `json:"year"`
+	Description string `json:"description"`
 }
 
 func (h *MovieHandler) CreateMovie(w http.ResponseWriter, r *http.Request) {
@@ -48,8 +49,9 @@ func (h *MovieHandler) CreateMovie(w http.ResponseWriter, r *http.Request) {
 	}
 
 	movie := entity.Movie{
-		Name: create.Name,
-		Year: create.Year,
+		Name:        create.Name,
+		Year:        create.Year,
+		Description: create.Description,
 	}
 
 	err := h.moviesRepo.CreateMovie(r.Context(), movie)
@@ -82,7 +84,7 @@ func (h *MovieHandler) GetMoviesByID(w http.ResponseWriter, r *http.Request) {
 	}
 
 	m, err := h.moviesRepo.GetMoviesByID(r.Context(), id)
-	if errors.Is(err, entity.ErrMovieNotFound) { //???
+	if errors.Is(err, entity.ErrMovieNotFound) {
 		w.WriteHeader(http.StatusNotFound)
 		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
 		return

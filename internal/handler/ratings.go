@@ -53,6 +53,14 @@ func CorrectMinMaxRating(minrating, maxrating int64) (string, int) {
 	return "", 0
 }
 
+func (h *RatingsHandler) GetAllMovieFromUserWithRating(w http.ResponseWriter, r *http.Request) {
+	_, ok := r.Context().Value(middleware.UserContextKey).(*auth.Claims)
+	if !ok {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+}
+
 func (h *RatingsHandler) GetMoviesWithRatingFromUser(w http.ResponseWriter, r *http.Request) {
 	_, ok := r.Context().Value(middleware.UserContextKey).(*auth.Claims)
 	if !ok {
@@ -66,9 +74,9 @@ func (h *RatingsHandler) GetMoviesWithRatingFromUser(w http.ResponseWriter, r *h
 		return
 	}
 
-	str, codeInt := CorrectMinMaxRating(getMovie.MinRating, getMovie.MaxRating)
-	if str != "" && codeInt != 0 {
-		http.Error(w, str, codeInt)
+	messageErr, statusCode := CorrectMinMaxRating(getMovie.MinRating, getMovie.MaxRating)
+	if messageErr != "" && statusCode != 0 {
+		http.Error(w, messageErr, statusCode)
 	}
 
 	movies, err := h.ratingsRepo.GetMoviesWithRatingFromUser(r.Context(), getMovie.UserID, getMovie.MinRating, getMovie.MaxRating)
@@ -100,9 +108,9 @@ func (h *RatingsHandler) GetUsersByRatingOfMovie(w http.ResponseWriter, r *http.
 		return
 	}
 
-	messageErr, status := CorrectMinMaxRating(getUser.MinRating, getUser.MaxRating)
-	if messageErr != "" && status != 0 {
-		http.Error(w, messageErr, status)
+	messageErr, statusCode := CorrectMinMaxRating(getUser.MinRating, getUser.MaxRating)
+	if messageErr != "" && statusCode != 0 {
+		http.Error(w, messageErr, statusCode)
 	}
 
 	users, err := h.ratingsRepo.GetUsersByRatingOfMovie(r.Context(), getUser.MovieID, getUser.MinRating, getUser.MaxRating)

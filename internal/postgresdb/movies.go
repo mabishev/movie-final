@@ -18,7 +18,7 @@ func NewMoviesRepository(p *pgxpool.Pool) *PgxMovieRepository {
 }
 
 func (p *PgxMovieRepository) CreateMovie(ctx context.Context, m entity.Movie) error {
-	_, err := p.pool.Exec(ctx, "insert into movie (name, year) values ($1, $2)", m.Name, m.Year)
+	_, err := p.pool.Exec(ctx, "insert into movie (name, year, description) values ($1, $2, $3)", m.Name, m.Year, m.Description)
 	if err != nil {
 		return errors.New("the movie already exists")
 	}

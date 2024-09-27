@@ -116,7 +116,7 @@ func (h *UserHandler) SignIn(w http.ResponseWriter, r *http.Request) {
 		Expires:  time.Now().Add(time.Hour * 24),
 		Path:     "/",
 		HttpOnly: true,
-		Secure:   true, // Включайте только если используете HTTPS
+		Secure:   true,
 	})
 
 	w.WriteHeader(http.StatusOK)
@@ -124,13 +124,10 @@ func (h *UserHandler) SignIn(w http.ResponseWriter, r *http.Request) {
 
 func (h *UserHandler) Logout(w http.ResponseWriter, r *http.Request) {
 	http.SetCookie(w, &http.Cookie{
-		Name:     "jwt",
-		Value:    "",
-		Expires:  time.Now().Add(-time.Hour),
-		HttpOnly: true,
+		Name:    "auth_token",
+		Expires: time.Now().Add(-time.Hour),
+		Path:    "/",
 	})
-
-	json.NewEncoder(w).Encode(map[string]string{"message": "logout"})
 }
 
 type Age struct {
