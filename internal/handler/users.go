@@ -15,7 +15,7 @@ import (
 )
 
 type UserRepo interface {
-	CreateUser(ctx context.Context, u entity.User) error
+	CreateUser(ctx context.Context, email, password string) error
 	GetUserByEmail(ctx context.Context, loginOrEmail string) (entity.User, error)
 	GetUserByAge(ctx context.Context, minAge, maxAge int64) ([]entity.User, error)
 	GetUserByCountry(ctx context.Context, country string) ([]entity.User, error)
@@ -55,18 +55,13 @@ func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	e, err := mail.ParseAddress(create.Email)
+	email, err := mail.ParseAddress(create.Email)
 	if err != nil {
 		http.Error(w, "Incorrect email", http.StatusBadRequest)
 		return
 	}
 
-	u := entity.User{
-		Email:    e.Address,
-		Password: create.Password,
-	}
-
-	err = h.userRepo.CreateUser(context.Background(), u)
+	err = h.userRepo.CreateUser(context.Background(), email.Address, create.Password)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})

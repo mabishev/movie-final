@@ -19,13 +19,13 @@ func NewUserRepo(p *pgxpool.Pool) *PgxUserRepo {
 	return &PgxUserRepo{pool: p}
 }
 
-func (p *PgxUserRepo) CreateUser(ctx context.Context, u entity.User) error {
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(u.Password), bcrypt.DefaultCost)
+func (p *PgxUserRepo) CreateUser(ctx context.Context, email, password string) error {
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		return err
 	}
 
-	_, err = p.pool.Exec(ctx, "insert into users (email, password) values ($1, $2)", u.Email, hashedPassword)
+	_, err = p.pool.Exec(ctx, "insert into users (email, password) values ($1, $2)", email, hashedPassword)
 	if err != nil {
 		return errors.New("the user already exists")
 	}
