@@ -13,10 +13,10 @@ import (
 )
 
 type MoviesRepo interface {
-	CreateMovie(ctx context.Context, e entity.Movie) error
+	CreateMovie(ctx context.Context, m entity.Movie) error
 	GetMovies(ctx context.Context) ([]entity.Movie, error)
 	GetMoviesByID(ctx context.Context, id int64) (entity.Movie, error)
-	UpdateMovieByID(ctx context.Context, e entity.Movie) error
+	UpdateMovieByID(ctx context.Context, m entity.Movie) error
 	DeleteMovieByID(ctx context.Context, id int64) error
 }
 

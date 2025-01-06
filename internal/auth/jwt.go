@@ -10,7 +10,7 @@ import (
 // Секретный ключ для подписи токена
 var jwtKey = []byte("your_secret_key")
 
-type Claims struct { // "claims" = "претензии, требования"
+type Claims struct {
 	ID   int64  `json:"id"`
 	Role string `json:"role"`
 	jwt.StandardClaims
@@ -18,7 +18,7 @@ type Claims struct { // "claims" = "претензии, требования"
 
 func GenerateJWT(id int64, email string, role string) (string, error) {
 	// Устанавливаем время жизни токена
-	expirationTime := time.Now().Add(time.Hour * 24) // "expiration time" = "срок годности/действия"
+	expirationTime := time.Now().Add(time.Hour * 24)
 	claims := &Claims{
 		ID:   id,
 		Role: role,
