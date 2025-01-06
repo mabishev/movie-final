@@ -19,7 +19,7 @@ func main() {
 	}
 	defer pool.Close()
 
-	movieRepo := postgresdb.NewMoviesRepository(pool)
+	movieRepo := postgresdb.NewMoviesRepo(pool)
 	ratingRepo := postgresdb.NewRatingsRepo(pool)
 	userRepo := postgresdb.NewUserRepo(pool)
 

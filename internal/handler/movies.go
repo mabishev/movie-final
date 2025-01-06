@@ -28,7 +28,7 @@ func NewMovieHandler(m MoviesRepo) *MovieHandler {
 	return &MovieHandler{moviesRepo: m}
 }
 
-type MovieResp struct {
+type MovieResponse struct {
 	Name        string `json:"name"`
 	Year        int    `json:"year"`
 	Description string `json:"description"`
@@ -41,7 +41,7 @@ func (h *MovieHandler) CreateMovie(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var create MovieResp
+	var create MovieResponse
 
 	if err := json.NewDecoder(r.Body).Decode(&create); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -112,7 +112,7 @@ func (h *MovieHandler) UpdateMovieByID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var update MovieResp
+	var update MovieResponse
 
 	if err := json.NewDecoder(r.Body).Decode(&update); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
