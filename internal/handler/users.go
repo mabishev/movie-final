@@ -124,6 +124,8 @@ func (h *UserHandler) Logout(w http.ResponseWriter, r *http.Request) {
 		Expires: time.Now().Add(-time.Hour),
 		Path:    "/",
 	})
+
+	w.Write([]byte("Cookie deleted!"))
 }
 
 type Age struct {
