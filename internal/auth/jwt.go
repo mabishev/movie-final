@@ -28,6 +28,7 @@ func GenerateJWT(id int64, email string, role string) (string, error) {
 	}
 	// Создаём токен
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+
 	tokenString, err := token.SignedString(jwtKey)
 	if err != nil {
 		return "", err

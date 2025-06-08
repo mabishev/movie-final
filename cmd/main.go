@@ -39,7 +39,7 @@ func main() {
 
 	u := handler.NewUserHandler(userRepo)
 	mux.HandleFunc("POST /user/create", u.CreateUser)
-	mux.HandleFunc("POST /user/auth", u.SignIn)
+	mux.HandleFunc("POST /user/auth", u.Login)
 	mux.HandleFunc("POST /user/logout", u.Logout)
 	mux.HandleFunc("GET /user/age", userAndAdmin(u.GetUserByAge))
 	mux.HandleFunc("GET /user/country", userAndAdmin(u.GetUserByCountry))

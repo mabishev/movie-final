@@ -32,7 +32,7 @@ func NewUserHandler(u UserRepo) *UserHandler {
 	return &UserHandler{userRepo: u}
 }
 
-type CreateUser struct {
+type RegisterRequest struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
 }
@@ -48,20 +48,20 @@ type User struct {
 }
 
 func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
-	var create CreateUser
+	var regReq RegisterRequest
 
-	if err := json.NewDecoder(r.Body).Decode(&create); err != nil {
+	if err := json.NewDecoder(r.Body).Decode(&regReq); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	email, err := mail.ParseAddress(create.Email)
+	email, err := mail.ParseAddress(regReq.Email)
 	if err != nil {
 		http.Error(w, "Incorrect email", http.StatusBadRequest)
 		return
 	}
 
-	err = h.userRepo.CreateUser(context.Background(), email.Address, create.Password)
+	err = h.userRepo.CreateUser(context.Background(), email.Address, regReq.Password)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
@@ -71,13 +71,13 @@ func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]string{"message": "user create successfully"})
 }
 
-type SignInRequest struct {
+type LoginRequest struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
 }
 
-func (h *UserHandler) SignIn(w http.ResponseWriter, r *http.Request) {
-	var request SignInRequest
+func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
+	var request LoginRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -110,8 +110,9 @@ func (h *UserHandler) SignIn(w http.ResponseWriter, r *http.Request) {
 		Value:    tokenString,
 		Expires:  time.Now().Add(time.Hour * 24),
 		Path:     "/",
-		HttpOnly: true,
-		Secure:   true,
+		HttpOnly: true,                    // Доступ только через HTTP, защита от XSS
+		Secure:   true,                    // Только HTTPS
+		SameSite: http.SameSiteStrictMode, // Защита от CSRF
 	})
 
 	w.WriteHeader(http.StatusOK)

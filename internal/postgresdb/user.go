@@ -35,6 +35,7 @@ func (p *PgxUserRepo) CreateUser(ctx context.Context, email, password string) er
 
 func (p *PgxUserRepo) GetUserByEmail(ctx context.Context, email string) (entity.User, error) {
 	var u entity.User
+
 	err := p.pool.QueryRow(ctx, "select id, email, password from users where email = $1", email).
 		Scan(&u.ID, &u.Email, &u.Password)
 	if err != nil {
